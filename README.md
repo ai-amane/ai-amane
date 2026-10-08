@@ -1,6 +1,8 @@
 # AI あまね（ai-amane）
 
-**呼びかけると声で応え、話しながら PC の作業もこなす、自分の PC で動く音声 AI エージェント** — v0.3.0
+<img src="docs/images/icon.png" alt="AI あまね のアイコン" width="112" align="right">
+
+**呼びかけると声で応え、話しながら PC の作業もこなす、自分の PC で動く音声 AI エージェント** — v0.4.0
 
 ![AI あまね の画面。頼んだ BGM を YouTube で流しながら、カップ麺のタイマーの残り時間を画面の上に出しているところ（曲: Cartoon - On & On (feat. Daniel Levi) [NCS Release]）](docs/images/screenshot.jpg)
 

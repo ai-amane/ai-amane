@@ -254,6 +254,10 @@ window.LocalVoice = (() => {
     }
     setSensitivity(v) { if (this.vad) this.vad.sensitivity = v; }
     setVolume(v) { if (this.boost) this.boost.gain.setTargetAtTime(v, this.ctx.currentTime, 0.05); }
+    // 声の種類・速さ（設定）。会話中に変えても、次に合成する文から変わる（合成し終えた文は前の声のまま）
+    setVoice({ speaker, speed } = {}) {
+      this.o = { ...this.o, ...(speaker != null && { speaker }), ...(speed != null && { speed }) };
+    }
     setMode(m) {
       if (this.mode === m) { if (m === "listening") this.listen(); return; }
       this.mode = m;
@@ -586,7 +590,7 @@ window.LocalVoice = (() => {
         src.onended = () => ctx.close();
       } catch (e) { ctx.close(); throw e; }
     },
-    louder, waitsForMore, cutSources, attrs, TAG_RE,   // テスト用
+    louder, waitsForMore, cutSources, attrs, TAG_RE, Session,   // テスト用
     // 応答の速さ（onTiming）を、会話ログに出す 1 行にする
     timingText(t) {
       const s = (ms) => (Number.isFinite(ms) ? (ms / 1000).toFixed(1) : "-");

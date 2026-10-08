@@ -834,9 +834,10 @@
   // サーバーは使われない時間が続くと頭を止めるので、待受中はときどき知らせて、起動したままにしてもらう
   function warmBrain() { fetch("/api/brain/warmup", { method: "POST" }).catch(() => {}); }
   setInterval(() => { if (standbyOn && isLocal() && !conversation) warmBrain(); }, 5 * 60 * 1000);
-  ui.vvSpeaker.onchange = () => { store.set("vvSpeaker", Number(ui.vvSpeaker.value)); updateCredit(); warmupVoice(); };
+  // 声の種類・速さは、会話中に変えても次の文から変わる（会話を終えて呼び直さなくてよい）
+  ui.vvSpeaker.onchange = () => { store.set("vvSpeaker", Number(ui.vvSpeaker.value)); conversation?.setVoice?.({ speaker: Number(ui.vvSpeaker.value) }); updateCredit(); warmupVoice(); };
   ui.vvSpeed.onchange = () => warmupVoice();   // 速さが変わったら、決まった言葉を合成し直して覚える
-  ui.vvSpeed.oninput = () => { ui.vvSpeedVal.textContent = Number(ui.vvSpeed.value).toFixed(2); store.set("vvSpeed", Number(ui.vvSpeed.value)); };
+  ui.vvSpeed.oninput = () => { ui.vvSpeedVal.textContent = Number(ui.vvSpeed.value).toFixed(2); store.set("vvSpeed", Number(ui.vvSpeed.value)); conversation?.setVoice?.({ speed: Number(ui.vvSpeed.value) }); };
   // 声の大きさ（iPad などは、マイクを使っている間スピーカーの音が小さくなるので、最初から大きめにする）
   const IS_IOS = /iPad|iPhone/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
   function vvVolume() { return Number(ui.vvVolume.value) || 1; }

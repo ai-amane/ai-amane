@@ -56,3 +56,21 @@ test("出典: 出典リストより前だけを返す（出典の中のタグの
   // 出典が始まったあとに届いた文は、全部読み上げない
   assert.deepEqual({ ...cutSources("続きの文", { noMore: true }) }, { text: "", found: false });
 });
+
+test("声の種類・速さ: 会話中に変えると、次に合成する文から新しい声になる", async () => {
+  // 音声合成の通信だけを偽物にする（送った声の番号と速さを覚える）
+  const sent = [];
+  const ctx = vm.createContext({
+    window: {},
+    fetch: async (url, init) => { sent.push(JSON.parse(init.body)); return { ok: true, arrayBuffer: async () => new ArrayBuffer(0) }; },
+  });
+  vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "public", "local-voice.js"), "utf8"), ctx);
+  const s = new ctx.window.LocalVoice.Session({ speaker: 2, speed: 1.15 });
+  s.ctx = { decodeAudioData: async () => "buf" };
+  await s.synth("一つ目");
+  s.setVoice({ speaker: 888753760 });
+  await s.synth("二つ目");
+  s.setVoice({ speed: 1.3 });
+  await s.synth("三つ目");
+  assert.deepEqual(sent.map((b) => [b.text, b.speaker, b.speed]), [["一つ目", 2, 1.15], ["二つ目", 888753760, 1.15], ["三つ目", 888753760, 1.3]]);
+});
