@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI AMANE</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="stage" id="stage">
+    <canvas id="orb" aria-hidden="true"></canvas>
+    <div class="hud-corner tl"><span>AI A.M.A.N.E</span><span id="hudClock">--:--:--</span></div>
+    <div class="hud-corner tr"><span id="hudMode">IDLE</span><span id="hudTimer">00:00</span></div>
+    <section class="viewer" id="viewer" aria-live="polite">
+      <header>
+        <span class="viewer-tag">DISPLAY</span>
+        <h2 id="viewerTitle"></h2>
+        <button id="viewerClose" class="viewer-close" aria-label="閉じる">×</button>
+      </header>
+      <div class="viewer-body" id="viewerBody"></div>
+    </section>
+    <div class="overlay">
+      <h1 class="status" id="status">待受はオフです</h1>
+      <p class="heard" id="heard">&nbsp;</p>
+      <div class="controls">
+        <button id="btnStandby" class="btn">待受をオン</button>
+        <button id="btnTalk" class="btn">今すぐ話す</button>
+        <button id="btnEnd" class="btn" disabled>会話を終了</button>
+        <button id="btnAmbient" class="btn" title="会話ログやボタンを隠して、AI の姿だけを表示します（H キーでも切り替え）">表示だけにする</button>
+        <button id="btnRec" class="btn" title="ショート動画（縦 9:16）を撮るための表示にします。字幕と声のクレジットも出します（R キーでも切り替え）">縦型で収録</button>
+      </div>
+    </div>
+    <div class="plugin-status" id="pluginStatus" role="timer"></div>
+    <div class="plugin-confirm" id="pluginConfirm"></div>
+    <p class="rec-credit" id="recCredit"></p>
+    <div class="rec-captions" id="recCaptions" aria-hidden="true">
+      <p class="rec-user off" id="recUser"></p>
+      <p class="rec-ai off" id="recAiLine"><span class="rec-name" id="recAiName"></span><span id="recAiText"></span></p>
+    </div>
+    <button id="btnAmbientExit" class="btn ambient-exit">表示を戻す</button>
+    <button id="btnRecExit" class="btn rec-exit">収録を終える</button>
+    <p class="toast" id="toast" role="status"></p>
+  </main>
+
+  <aside class="side">
+    <section class="log-section">
+      <h2>会話ログ</h2>
+      <p class="sys" id="sysMsg">読み込み中…</p>
+      <div class="log" id="log"></div>
+    </section>
+
+    <section class="panel">
+      <h2>作業 <small id="engineInfo"></small></h2>
+      <div class="tasks" id="tasks"><p class="empty">まだ作業はありません</p></div>
+    </section>
+
+    <section class="panel">
+      <h2>使用量 <button id="btnUsage" class="link">更新</button></h2>
+      <div class="usage" id="usage">
+        <div class="meter"><div class="meter-fill" id="usageBar"></div></div>
+        <p id="usageText" class="muted">—</p>
+        <p id="usageLast" class="muted"></p>
+      </div>
+    </section>
+
+    <details class="panel settings persona">
+      <summary>AI の設定（名前・性格・ルール）</summary>
+      <p class="note">VOICEVOX / AivisSpeech モードで使います（ElevenLabs モードは、ElevenLabs の管理画面で設定します）。</p>
+      <div class="row">
+        <div class="col"><label for="personaAiName">AI の名前</label><input id="personaAiName" autocomplete="off"></div>
+        <div class="col"><label for="personaUserName">あなたの呼び方</label><input id="personaUserName" autocomplete="off" placeholder="例: 田中さん"></div>
+      </div>
+      <label for="personaPreset">話し方のひな形</label>
+      <div class="row">
+        <select id="personaPreset"></select>
+        <button id="btnPersonaPreset" class="btn small">当てはめる</button>
+      </div>
+      <label for="personaStyle">話し方・性格</label>
+      <textarea id="personaStyle" rows="3"></textarea>
+      <label for="personaLength">返事の長さ</label>
+      <select id="personaLength">
+        <option value="short">短め（1〜3文）</option>
+        <option value="normal">ふつう（2〜4文）</option>
+        <option value="long">詳しめ（聞かれたことに合わせて）</option>
+      </select>
+      <label for="personaCharacter">キャラクター設定（生い立ち・口ぐせ・好きなものなど）</label>
+      <textarea id="personaCharacter" rows="3" placeholder="例: 名前は「天の音」から。物知りで、少しだけお茶目。"></textarea>
+      <label for="personaRules">守ってほしいルール（1 行に 1 つ）</label>
+      <textarea id="personaRules" rows="4" placeholder="例: 夜 10 時を過ぎたら、小さめの声で短く話す&#10;子どもに話すときは、やさしい言葉にする"></textarea>
+      <label for="personaProfile">あなたについて（住んでいる地域・家族・好みなど）</label>
+      <textarea id="personaProfile" rows="3" placeholder="例: 東京都世田谷区に住んでいる。最寄り駅は三軒茶屋。猫を 2 匹飼っている。"></textarea>
+      <div class="row persona-actions">
+        <button id="btnPersonaSave" class="btn small">保存して反映</button>
+        <button id="btnPersonaReset" class="btn small ghost-inline">最初の設定を入れる</button>
+      </div>
+      <p class="note" id="personaNote"></p>
+    </details>
+
+    <details class="panel settings">
+      <summary>設定</summary>
+      <label for="sttEngine">聞き取り（音声認識）</label>
+      <select id="sttEngine">
+        <option value="whisper">ローカル音声認識（高精度・start.bat が一緒に起動）</option>
+        <option value="browser">ブラウザの音声認識（Google / Microsoft）</option>
+      </select>
+      <label for="sttHints">認識ヒント（固有名詞などをカンマ区切り）</label>
+      <div class="row">
+        <input id="sttHints" autocomplete="off">
+        <button id="btnSaveHints" class="btn small">保存</button>
+      </div>
+      <label for="micSens">マイクの感度 <span id="micSensVal">1.0</span>（下げると周りの声を拾いにくくなる・ローカル音声認識のとき）</label>
+      <input type="range" id="micSens" min="0.4" max="1.6" step="0.1">
+      <label class="check"><input type="checkbox" id="ownerOnly"> 会話中は、呼びかけた人の声だけを聞く（テレビや家族の声に返事をしない・ローカル音声認識のとき）</label>
+      <label class="check"><input type="checkbox" id="showTiming"> 返事までにかかった時間を会話ログに出す（VOICEVOX / AivisSpeech のとき）</label>
+
+      <label for="visual">見た目</label>
+      <select id="visual">
+        <option value="swarm">粒子の群れ</option>
+        <option value="orb">流体オーブ</option>
+      </select>
+      <label for="panelScale">パネルの文字の大きさ <span id="panelScaleVal">1.0</span>（資料を出すパネル。離れて見るときに上げる）</label>
+      <input type="range" id="panelScale" min="0.7" max="2" step="0.1">
+
+      <label for="voiceEngine">声のエンジン</label>
+      <select id="voiceEngine">
+        <option value="elevenlabs">ElevenLabs（会話も声も ElevenLabs）</option>
+        <option value="voicevox">VOICEVOX（無料・頭は Claude Code）</option>
+      </select>
+      <div id="vvRow">
+        <label for="vvSpeaker" id="vvSpeakerLabel">VOICEVOX の声</label>
+        <div class="row">
+          <select id="vvSpeaker"><option>読み込み中…</option></select>
+          <button id="btnVvTest" class="btn small">試聴</button>
+        </div>
+        <label for="vvSpeed">話す速さ <span id="vvSpeedVal">1.15</span></label>
+        <input type="range" id="vvSpeed" min="0.8" max="1.6" step="0.05">
+        <label for="vvVolume">声の大きさ <span id="vvVolumeVal">1.00</span>（iPad などで小さいときに上げる）</label>
+        <input type="range" id="vvVolume" min="1" max="4" step="0.25">
+      </div>
+
+      <label for="agentId">Agent ID（ElevenLabs）</label>
+      <div class="row">
+        <input id="agentId" placeholder="agent_xxxxxxxxxxxxxxxx" autocomplete="off">
+        <button id="btnSaveAgent" class="btn small">保存</button>
+      </div>
+
+      <label for="wakeWords">呼びかけの言葉（カンマ区切り）</label>
+      <div class="row">
+        <input id="wakeWords" autocomplete="off">
+        <button id="btnSaveWake" class="btn small">保存</button>
+      </div>
+      <button id="btnAddHeard" class="btn small ghost" disabled>いま聞こえた言葉を追加</button>
+
+      <label class="check"><input type="checkbox" id="idleEnd"> 無言が<input type="number" id="idleSec" min="10" max="600" step="5">秒続いたら会話を終了</label>
+      <label for="taskConfirm">作業を頼む前に確認する（画面のボタンか、声で「お願い」）</label>
+      <select id="taskConfirm">
+        <option value="all">すべての作業（おすすめ）</option>
+        <option value="heavy">時間のかかる作業だけ</option>
+        <option value="none">確認しない</option>
+      </select>
+      <label class="check"><input type="checkbox" id="autoReport"> 作業が終わったら自動で呼び出して報告</label>
+      <label class="check"><input type="checkbox" id="autoStandby"> 起動時に待受をオンにする</label>
+
+      <div id="lanRow" hidden>
+        <label>iPad・スマホからつなぐ（家の Wi-Fi）</label>
+        <p class="note lan-info" id="lanInfo"></p>
+        <div class="row">
+          <button id="btnLanCode" class="btn small">つなぐための番号を表示</button>
+          <button id="btnLanRevoke" class="btn small">すべて解除</button>
+        </div>
+        <p class="lan-code" id="lanCode" aria-live="polite"></p>
+      </div>
+      <p class="note" id="settingsNote"></p>
+    </details>
+  </aside>
+
+  <script src="amane-fetch.js"></script>
+  <script src="vendor/elevenlabs-client.js"></script>
+  <script src="orb.js"></script>
+  <script src="swarm.js"></script>
+  <script src="screen-awake.js"></script>
+  <script src="ambient.js"></script>
+  <script src="rec-mode.js"></script>
+  <script src="mic-vad.js"></script>
+  <script src="local-voice.js"></script>
+  <script src="viewer.js"></script>
+  <script src="plugins.js"></script>
+  <script src="persona-panel.js"></script>
+  <script src="app.js"></script>
+  <script src="lan-panel.js"></script>
+</body>
+</html>

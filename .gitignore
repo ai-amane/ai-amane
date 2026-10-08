@@ -1,0 +1,28 @@
+# 秘密情報
+.env
+
+# 依存パッケージ・ダウンロードしたモデル
+node_modules/
+models/
+
+# 追加機能: 同梱のもの以外（自分で入れたもの・購入したもの）は入れない
+plugins/*
+!plugins/timer/
+
+# 実行時に作られるもの
+logs/
+workspace/
+data/
+_to_delete/
+__pycache__/
+*.pyc
+
+# OS / エディタ
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.playwright-mcp/
+
+# Mac の start.command が作る Python の環境
+.venv/

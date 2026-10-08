@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI AMANE とつなぐ</title>
+  <link rel="icon" href="data:,">
+  <!-- ペアリング前の端末にも見せるページなので、ほかのファイルを読まずにこれだけで完結させる -->
+  <style>
+    :root { --bg: #010204; --panel: #07090c; --line: #1a2027; --text: #e6f1f5; --muted: #8d99a3; --accent: #7fe7ff; --amber: #ffb347; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; background: radial-gradient(circle at 50% 0, #0b1a22, var(--bg) 60%); color: var(--text);
+      font-family: "Hiragino Sans", "Yu Gothic UI", "Meiryo", system-ui, sans-serif; line-height: 1.7;
+    }
+    main { max-width: 640px; margin: 0 auto; padding: 40px 16px 64px; }
+    .tag { font-family: "SFMono-Regular", "Consolas", monospace; font-size: 12px; letter-spacing: .3em; color: rgba(127, 231, 255, .6); margin: 0; }
+    h1 { font-size: 26px; font-weight: 500; letter-spacing: .12em; margin: 6px 0 24px; text-shadow: 0 0 18px rgba(127, 231, 255, .35); }
+    section { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; margin-bottom: 18px; }
+    h2 { font-size: 17px; font-weight: 600; margin: 0 0 8px; display: flex; align-items: center; gap: 10px; }
+    h2 span {
+      display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%;
+      border: 1px solid var(--accent); color: var(--accent); font-size: 14px; flex: none;
+    }
+    p, li { color: #c9d1d7; font-size: 15px; }
+    ol { padding-left: 1.4em; margin: 12px 0 0; }
+    li { margin: 4px 0; }
+    b { color: var(--text); }
+    .btn {
+      display: inline-block; appearance: none; border: 1px solid var(--accent); background: transparent; color: var(--accent);
+      font: inherit; font-size: 16px; padding: 10px 20px; border-radius: 10px; text-decoration: none; cursor: pointer;
+    }
+    .btn.primary { background: var(--accent); color: #032530; font-weight: 600; width: 100%; margin-top: 16px; }
+    .btn:disabled { opacity: .5; }
+    label { display: block; font-size: 13px; color: var(--muted); margin: 14px 0 6px; }
+    input {
+      width: 100%; font: inherit; font-size: 18px; color: var(--text); background: #0c1116; border: 1px solid var(--line);
+      border-radius: 10px; padding: 10px 12px;
+    }
+    input:focus { outline: none; border-color: var(--accent); }
+    #code { font-family: "SFMono-Regular", "Consolas", monospace; font-size: 28px; letter-spacing: .4em; text-align: center; }
+    #msg { min-height: 1.5em; margin: 12px 0 0; }
+    #msg.error { color: var(--amber); }
+    details { margin-top: 12px; }
+    summary { cursor: pointer; color: var(--muted); font-size: 14px; }
+  </style>
+</head>
+<body>
+  <main>
+    <p class="tag">AI A.M.A.N.E</p>
+    <h1>この端末をつなぐ</h1>
+
+    <section>
+      <h2><span>1</span>証明書を入れる（はじめてのときだけ）</h2>
+      <p>このページを開くときに「安全ではありません」と表示された場合は、先にこの PC の証明書を入れます。</p>
+      <a class="btn" href="/amane-ca.crt">証明書をダウンロード</a>
+      <ol>
+        <li>「構成プロファイルをダウンロードしようとしています」と出たら<b>「許可」</b></li>
+        <li>設定アプリ →<b>「ダウンロード済みのプロファイル」</b>を開き、「詳細」→ 証明書 の <b>SHA-256 のフィンガープリント</b>が、PC の画面（設定 →「iPad・スマホからつなぐ」）に出ているものと同じか確かめてから<b>「インストール」</b>（違うときはインストールしない）</li>
+        <li>設定 →「一般」→「情報」→ いちばん下の<b>「証明書信頼設定」</b>で、<b>「AI AMANE Local CA …」をオン</b></li>
+        <li>Safari でこのページを開き直す（「安全ではありません」が出なければ完了）</li>
+      </ol>
+      <details>
+        <summary>Android の場合</summary>
+        <ol>
+          <li>上のボタンで証明書をダウンロード</li>
+          <li>設定 →「セキュリティ」→「暗号化と認証情報」→「証明書のインストール」→「CA 証明書」で、ダウンロードしたファイルを選ぶ（機種によって名前が違います）</li>
+          <li>Chrome でこのページを開き直す</li>
+        </ol>
+      </details>
+    </section>
+
+    <section>
+      <h2><span>2</span>番号を入れる</h2>
+      <p>PC の AI あまね の画面で「設定」→「iPad・スマホからつなぐ」の<b>「つなぐための番号を表示」</b>を押し、出てきた 6 桁の番号を入れてください。</p>
+      <form id="form">
+        <label for="code">番号（6 桁）</label>
+        <input id="code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" required>
+        <label for="label">この端末の名前（PC の画面に表示されます）</label>
+        <input id="label" maxlength="40">
+        <button class="btn primary" id="submit" type="submit">つなぐ</button>
+        <p id="msg" role="status"></p>
+      </form>
+    </section>
+  </main>
+
+  <script>
+    (() => {
+      "use strict";
+      const $ = (id) => document.getElementById(id);
+      const ua = navigator.userAgent;
+      // iPad の Safari は Mac と名乗るので、タッチできるかどうかで見分ける
+      $("label").value = /iPad/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1) ? "リビングの iPad"
+        : /iPhone/.test(ua) ? "iPhone" : /Android/.test(ua) ? "Android" : "この端末";
+
+      const show = (text, isError = false) => { $("msg").textContent = text; $("msg").className = isError ? "error" : ""; };
+      $("form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        $("submit").disabled = true;
+        show("確認しています…");
+        try {
+          const r = await fetch("/api/lan/pair", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-Amane": "1" },
+            body: JSON.stringify({ code: $("code").value, label: $("label").value }),
+          });
+          const j = await r.json().catch(() => ({}));
+          if (!r.ok) throw new Error(j.error || "つなげませんでした（HTTP " + r.status + "）");
+          show("つながりました。画面を開きます…");
+          location.replace("/");
+        } catch (err) {
+          show(err.message, true);
+          $("submit").disabled = false;
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+{
+  "name": "ai-amane",
+  "version": "0.3.0",
+  "private": true,
+  "description": "呼びかけると声で応え、PC上の作業もこなす音声AIエージェント（ElevenLabs / VOICEVOX + Claude Code / Codex）",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/*.test.js",
+    "test:stt": "python -m unittest discover -s test -p \"test_*.py\""
+  },
+  "dependencies": {
+    "@mozilla/readability": "^0.6.0",
+    "kuromoji": "^0.1.2",
+    "linkedom": "^0.18.13"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ai-amane/ai-amane.git"
+  }
+}

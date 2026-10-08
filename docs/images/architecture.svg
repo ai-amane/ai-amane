@@ -1,0 +1,176 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1160" height="728" viewBox="0 0 1160 728" role="img" aria-label="AI あまね の仕組み（VOICEVOX モード）。話した声はブラウザで区切られ、PC の中の音声認識で文字になり、常駐の Claude Code が返事を考え、VOICEVOX が声にする。作業は workspace フォルダの中で Codex / Claude Code が行う。PC の外に送られるのは、会話の文字と作業の内容（Anthropic / OpenAI）と、ElevenLabs モードのときの会話の音声だけ。" font-family="'Noto Sans JP', 'Hiragino Sans', 'Yu Gothic UI', Meiryo, sans-serif">
+  <!-- docs/images/architecture.png はこの SVG から書き出したもの（Noto Sans JP が入った環境で、Chrome の headless スクリーンショット・2 倍。サイズを抑えるため 256 色に減色） -->
+  <defs>
+    <radialGradient id="glowBg" cx="0.56" cy="0.46" r="0.62">
+      <stop offset="0" stop-color="#143058" stop-opacity="0.75"/>
+      <stop offset="0.55" stop-color="#0b1730" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#070b13" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="blur" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="14"/>
+    </filter>
+    <marker id="ac" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0,1 L9,5 L0,9 z" fill="#7fd6ff"/>
+    </marker>
+    <marker id="aa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0,1 L9,5 L0,9 z" fill="#f2b36b"/>
+    </marker>
+    <marker id="am" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0,1 L9,5 L0,9 z" fill="#7f93a8"/>
+    </marker>
+  </defs>
+
+  <!-- 背景 -->
+  <rect width="1160" height="728" rx="18" fill="#070b13"/>
+  <rect width="1160" height="728" rx="18" fill="url(#glowBg)"/>
+
+  <!-- タイトル -->
+  <text x="32" y="54" font-size="26" font-weight="700" fill="#e6edf5">AI あまね の仕組み<tspan dx="16" font-size="15" font-weight="500" fill="#7f93a8">VOICEVOX モード</tspan></text>
+
+  <!-- あなたの PC -->
+  <rect x="164" y="84" width="972" height="524" rx="20" fill="#7fd6ff" fill-opacity="0.025" stroke="#7fd6ff" stroke-opacity="0.38" stroke-width="1.4"/>
+  <text x="188" y="117" font-size="17" font-weight="700" fill="#cfe9f7">あなたの PC<tspan dx="14" font-size="14" font-weight="400" fill="#7f93a8">server.js が 127.0.0.1 だけで中継（PC の外からは接続できません）</tspan></text>
+
+  <!-- あなた -->
+  <text x="79" y="157" font-size="14" font-weight="700" fill="#7f93a8" text-anchor="middle">あなた</text>
+  <g fill="#0d1521" stroke="#2a3d52" stroke-width="1.2">
+    <rect x="28" y="170" width="102" height="80" rx="12"/>
+    <rect x="28" y="330" width="102" height="80" rx="12"/>
+    <rect x="28" y="490" width="102" height="80" rx="12"/>
+  </g>
+  <g fill="none" stroke="#9fdcf5" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <!-- マイク -->
+    <g transform="translate(79 195)">
+      <rect x="-5.5" y="-13" width="11" height="17" rx="5.5"/>
+      <path d="M-10,-1 a10,10 0 0 0 20,0"/>
+      <path d="M0,9 v5 M-5,14 h10"/>
+    </g>
+    <!-- 画面 -->
+    <g transform="translate(79 355)">
+      <rect x="-14" y="-12" width="28" height="18" rx="2.5"/>
+      <path d="M0,6 v6 M-7,12 h14"/>
+    </g>
+    <!-- ヘッドホン -->
+    <g transform="translate(79 516)">
+      <path d="M-12,4 v-4 a12,12 0 0 1 24,0 v4"/>
+      <rect x="-15" y="1" width="6.5" height="12" rx="2"/>
+      <rect x="8.5" y="1" width="6.5" height="12" rx="2"/>
+    </g>
+  </g>
+  <g font-size="15" font-weight="500" fill="#e6edf5" text-anchor="middle">
+    <text x="79" y="236">話す</text>
+    <text x="79" y="396">見る</text>
+    <text x="79" y="556">聞く</text>
+  </g>
+
+  <!-- ブラウザ -->
+  <rect x="186" y="134" width="210" height="458" rx="16" fill="none" stroke="#7fd6ff" stroke-opacity="0.22" stroke-dasharray="4 5"/>
+  <text x="291" y="157" font-size="14" font-weight="700" fill="#7f93a8" text-anchor="middle">ブラウザ（画面）</text>
+  <g fill="#0d1521" stroke="#2a3d52" stroke-width="1.2">
+    <rect x="196" y="170" width="190" height="80" rx="12"/>
+    <rect x="196" y="330" width="190" height="80" rx="12"/>
+    <rect x="196" y="490" width="190" height="80" rx="12"/>
+  </g>
+  <g text-anchor="middle">
+    <text x="291" y="205" font-size="17" font-weight="700" fill="#e6edf5">発話を区切る</text>
+    <text x="291" y="229" font-size="13.5" fill="#8fa3b8">声の大きさで判定</text>
+    <text x="291" y="365" font-size="17" font-weight="700" fill="#e6edf5">資料を表示</text>
+    <text x="291" y="389" font-size="13.5" fill="#8fa3b8">表・画像・PDF・動画</text>
+    <text x="291" y="525" font-size="17" font-weight="700" fill="#e6edf5">声を再生</text>
+    <text x="291" y="549" font-size="13.5" fill="#8fa3b8">話しかけると途中で止まる</text>
+  </g>
+
+  <!-- 聞く → 考える → 話す -->
+  <rect x="486" y="332" width="220" height="76" rx="14" fill="#7fd6ff" opacity="0.22" filter="url(#blur)"/>
+  <g fill="#0d1521" stroke-width="1.3">
+    <rect x="476" y="162" width="240" height="96" rx="12" stroke="#3b6b8a"/>
+    <rect x="476" y="322" width="240" height="96" rx="12" stroke="#7fd6ff" stroke-opacity="0.75"/>
+    <rect x="476" y="482" width="240" height="96" rx="12" stroke="#3b6b8a"/>
+  </g>
+  <g text-anchor="middle">
+    <text x="596" y="196" font-size="19" font-weight="700" fill="#e6edf5">文字にする</text>
+    <text x="596" y="219" font-size="14.5" fill="#b4c2d1">音声認識サーバー</text>
+    <text x="596" y="240" font-size="13.5" fill="#7fd6ff">ReazonSpeech ＋ Silero VAD</text>
+    <text x="596" y="356" font-size="19" font-weight="700" fill="#e6edf5">返事を考える</text>
+    <text x="596" y="379" font-size="14.5" fill="#b4c2d1">常駐の Claude Code</text>
+    <text x="596" y="400" font-size="13.5" fill="#7fd6ff">Haiku ・ Web 検索</text>
+    <text x="596" y="516" font-size="19" font-weight="700" fill="#e6edf5">声にする</text>
+    <text x="596" y="539" font-size="14.5" fill="#b4c2d1">VOICEVOX</text>
+    <text x="596" y="560" font-size="13.5" fill="#7fd6ff">無料・PC の中で合成</text>
+  </g>
+
+  <!-- 作業 -->
+  <rect x="836" y="310" width="282" height="144" rx="16" fill="#f2b36b" fill-opacity="0.03" stroke="#f2b36b" stroke-opacity="0.45" stroke-dasharray="4 5"/>
+  <rect x="846" y="322" width="262" height="96" rx="12" fill="#0d1521" stroke="#6b5233" stroke-width="1.3"/>
+  <g text-anchor="middle">
+    <text x="977" y="356" font-size="19" font-weight="700" fill="#e6edf5">作業する</text>
+    <text x="977" y="379" font-size="14" fill="#b4c2d1">軽い作業：Codex</text>
+    <text x="977" y="400" font-size="14" fill="#b4c2d1">重い作業：Claude Code（Opus）</text>
+    <text x="977" y="443" font-size="13.5" fill="#f2b36b" fill-opacity="0.9">workspace フォルダの中だけで作業</text>
+  </g>
+
+  <!-- 矢印：あなた ⇄ ブラウザ -->
+  <g stroke="#7fd6ff" stroke-width="1.7" fill="none">
+    <path d="M130,210 H196" marker-end="url(#ac)"/>
+    <path d="M196,370 H130" marker-end="url(#ac)"/>
+    <path d="M196,530 H130" marker-end="url(#ac)"/>
+    <!-- ブラウザ ⇄ 中央 -->
+    <path d="M386,210 H476" marker-end="url(#ac)"/>
+    <path d="M476,370 H386" marker-end="url(#ac)"/>
+    <path d="M476,530 H386" marker-end="url(#ac)"/>
+    <!-- 文字にする → 呼びかけ判定 → 返事を考える → 声にする -->
+    <path d="M596,258 V281"/>
+    <path d="M596,299 V322" marker-end="url(#ac)"/>
+    <path d="M596,418 V482" marker-end="url(#ac)"/>
+  </g>
+  <polygon points="596,281 605,290 596,299 587,290" fill="#070b13" stroke="#7fd6ff" stroke-width="1.7"/>
+  <g font-size="14" fill="#b4c2d1" text-anchor="middle">
+    <text x="431" y="200">発話の音声</text>
+    <text x="431" y="360">表・画像</text>
+    <text x="431" y="520">合成した声</text>
+  </g>
+  <text x="618" y="286" font-size="14" fill="#b4c2d1">文字</text>
+  <text x="618" y="305" font-size="13.5" fill="#8fa3b8">待受中は、話し始めの呼びかけだけ</text>
+  <text x="612" y="456" font-size="14" fill="#b4c2d1">返事を一文ずつ</text>
+
+  <!-- 矢印：返事を考える ⇄ 作業する -->
+  <g stroke="#f2b36b" stroke-width="1.7" fill="none">
+    <path d="M716,354 H846" marker-end="url(#aa)"/>
+    <path d="M846,386 H716" marker-end="url(#aa)"/>
+  </g>
+  <g font-size="14" fill="#f2c48f" text-anchor="middle">
+    <text x="781" y="345">作業を依頼</text>
+    <text x="781" y="377">終わったら報告</text>
+  </g>
+
+  <!-- PC の外 -->
+  <g stroke="#7f93a8" stroke-width="1.4" fill="none" stroke-dasharray="5 5">
+    <path d="M291,592 V640" marker-end="url(#am)"/>
+    <path d="M716,408 H781 V640" marker-end="url(#am)"/>
+    <path d="M880,454 V640" marker-end="url(#am)"/>
+    <path d="M1030,454 V640" marker-end="url(#am)"/>
+  </g>
+  <g font-size="13.5" fill="#8fa3b8">
+    <text x="301" y="629">会話の音声</text>
+    <text x="791" y="629">会話の文字</text>
+    <text x="955" y="629" text-anchor="middle">作業の内容</text>
+  </g>
+  <text x="32" y="674" font-size="14" font-weight="700" fill="#7f93a8">PC の外</text>
+  <g fill="#0b111b" stroke="#3a4a5e" stroke-width="1.2">
+    <rect x="196" y="640" width="190" height="56" rx="28"/>
+    <rect x="716" y="640" width="190" height="56" rx="28"/>
+    <rect x="956" y="640" width="150" height="56" rx="28"/>
+  </g>
+  <g text-anchor="middle">
+    <text x="291" y="665" font-size="15" font-weight="700" fill="#cfd8e3">ElevenLabs</text>
+    <text x="291" y="685" font-size="12.5" fill="#7f93a8">別のモード</text>
+    <text x="811" y="665" font-size="15" font-weight="700" fill="#cfd8e3">Anthropic</text>
+    <text x="811" y="685" font-size="12.5" fill="#7f93a8">Claude（会話・作業）</text>
+    <text x="1031" y="665" font-size="15" font-weight="700" fill="#cfd8e3">OpenAI</text>
+    <text x="1031" y="685" font-size="12.5" fill="#7f93a8">Codex（作業）</text>
+  </g>
+  <g font-size="13" fill="#8fa3b8">
+    <text x="404" y="664">ElevenLabs モードでは、会話中の聞き取り・</text>
+    <text x="404" y="684">返事・声を ElevenLabs が担当（ほかは同じ）</text>
+  </g>
+</svg>
