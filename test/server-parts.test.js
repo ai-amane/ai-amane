@@ -91,11 +91,50 @@ test("ファイルの表示: 作業フォルダの中だけ。SVG はスクリ�
       assert.equal((await fetch(`${base}/api/file?path=${encodeURIComponent(p)}`)).status, 403, p);
     }
     assert.equal((await fetch(`${base}/api/file?path=none.txt`)).status, 404);
+    // HTML（ゲームなど）は、この画面とは別の隔離された場所で動かす（スクリプトは動くが、この画面・API・外のサイトには触れない）
+    fs.writeFileSync(path.join(work, "game.html"), "<!doctype html><script>1</script>");
+    const inFrame = { headers: { "Sec-Fetch-Dest": "iframe" } };
+    const html = await fetch(`${base}/api/file?path=game.html`, inFrame);
+    assert.equal(html.headers.get("content-type"), "text/html; charset=utf-8");
+    const csp = html.headers.get("content-security-policy");
+    assert.match(csp, /^sandbox allow-scripts;/);
+    assert.doesNotMatch(csp, /allow-same-origin|allow-top-navigation|allow-popups|allow-forms|worker-src/);
+    for (const d of ["default-src 'none'", "connect-src 'none'", "form-action 'none'", "base-uri 'none'", "frame-src 'none'"]) assert.ok(csp.includes(d), d);
+    // 枠の中に読み込むとき以外（タブで直接開く・fetch で読む）は渡さない。HEAD（あるかどうかの確認）は中身を送らずに答える
+    assert.equal((await fetch(`${base}/api/file?path=game.html`)).status, 403);
+    const head = await fetch(`${base}/api/file?path=game.html`, { method: "HEAD" });
+    assert.deepEqual([head.status, (await head.arrayBuffer()).byteLength], [200, 0]);
+    // 枠の外側（この画面と同じオリジンの、スクリプトのないページ）。中の枠の移動先を、このサーバーの中だけに限る
+    const wrap = await fetch(`${base}/api/app-frame?path=${encodeURIComponent('a"><script>x</script>.html')}`);
+    const wcsp = wrap.headers.get("content-security-policy");
+    for (const d of ["default-src 'none'", "frame-src 'self'", "frame-ancestors 'self'"]) assert.ok(wcsp.includes(d), d);
+    assert.doesNotMatch(wcsp, /script-src/);
+    const page = await wrap.text();
+    assert.match(page, /<iframe sandbox="allow-scripts" [^>]*src="\/api\/file\?path=a%22%3E%3Cscript%3Ex%3C%2Fscript%3E\.html"/);
+    assert.doesNotMatch(page, /<script/);
+    assert.equal((await fetch(`${base}/api/app-frame?path=a.svg`)).status, 400);
     // Web ページの下調べ: 家の中のアドレスは 403
     const r = await fetch(`${base}/api/web/inspect`, { method: "POST", body: JSON.stringify({ url: "http://192.168.0.1/" }) });
     assert.equal(r.status, 403);
     const img = await fetch(`${base}/api/web/image?url=${encodeURIComponent("http://10.0.0.1/a.png")}`);
     assert.equal(img.status, 403);
+  } finally { server.close(); }
+});
+
+test("ファイルの表示: HTML を動かすのは作業フォルダの中だけ（SHOW_DIRS で足したフォルダの HTML は、これまでどおり文字で出す）", async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "amane-show-"));
+  const [work, extra] = ["work", "extra"].map((d) => path.join(root, d));
+  for (const d of [work, extra]) fs.mkdirSync(d);
+  fs.writeFileSync(path.join(extra, "saved.html"), "<script>1</script>");
+  const route = createDisplayRoutes({ showDirs: [work, extra] });
+  const server = http.createServer(async (req, res) => {
+    if (!(await route(req, res, new URL(req.url, "http://x")))) { res.writeHead(404); res.end(); }
+  });
+  await new Promise((r) => server.listen(0, "127.0.0.1", r));
+  try {
+    const r = await fetch(`http://127.0.0.1:${server.address().port}/api/file?path=${encodeURIComponent(path.join(extra, "saved.html"))}`, { headers: { "Sec-Fetch-Dest": "iframe" } });
+    assert.equal(r.headers.get("content-type"), "text/plain; charset=utf-8");
+    assert.match(r.headers.get("content-security-policy"), /^sandbox;/);
   } finally { server.close(); }
 });
 

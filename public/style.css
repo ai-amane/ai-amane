@@ -98,11 +98,8 @@ body {
 .meter { height: 6px; border-radius: 3px; background: #141a20; overflow: hidden; }
 .meter-fill { height: 100%; width: 0; background: linear-gradient(90deg, #39c6ff, #b07bff); transition: width .6s; }
 
-.settings summary { cursor: pointer; font-size: 13px; color: #b5c1ca; font-weight: 600; }
-.settings label { display: block; font-size: 12px; margin: 12px 0 6px; color: #c9d1d7; }
-.settings label.check { display: flex; align-items: center; gap: 6px; }
 .row { display: flex; gap: 8px; }
-input:not([type]), input[type="text"] {
+input:not([type]), input[type="text"], input[type="search"] {
   flex: 1; min-width: 0; background: #000; color: var(--text); border: 1px solid #2c3a44;
   border-radius: 8px; padding: 8px 10px; font-size: 13px; font-family: inherit;
 }
@@ -292,13 +289,94 @@ body.rec .confirm-title { font-size: 2.6cqw; }
 .confirm-hint { margin: 10px 0 0; font-size: 13px; color: rgba(255, 230, 190, .85); }
 body.rec .confirm-hint { font-size: 2.8cqw; }
 
-/* ---- AI の設定（persona-panel.js。lib/persona.js） ---- */
-.settings textarea {
+/* ---- 設定（settings-panel.js）: 右の列のボタンで、大きな窓を開く。左に分類、右にその分類の項目 ---- */
+.settings-open {
+  flex: none; display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px;
+  border: 1px solid #2c3a44; border-radius: 12px; background: #0b1015; color: var(--text);
+  font-family: inherit; text-align: left; cursor: pointer;
+}
+.settings-open:hover { border-color: var(--accent); box-shadow: 0 0 12px rgba(127, 231, 255, .2); }
+.settings-open svg { width: 22px; height: 22px; flex: none; fill: none; stroke: var(--accent); stroke-width: 1.6; }
+.settings-open svg .teeth { stroke-width: 2.6; }
+.settings-open span { display: flex; flex-direction: column; gap: 2px; font-size: 14px; font-weight: 600; }
+.settings-open small { font-size: 11px; font-weight: 400; color: var(--muted); }
+
+.settings-dialog {
+  width: min(900px, 94vw); height: min(700px, 90vh); padding: 0; overflow: hidden;
+  border: 1px solid rgba(127, 231, 255, .28); border-radius: 16px; color: var(--text);
+  background: linear-gradient(160deg, #0b1620, #05090d); box-shadow: 0 0 60px rgba(60, 160, 255, .18);
+}
+.settings-dialog::backdrop { background: rgba(0, 3, 8, .55); backdrop-filter: blur(3px); }
+.settings-dialog.no-modal { position: fixed; inset: 0; z-index: 20; margin: auto; }   /* <dialog> がない古いブラウザ（settings-panel.js） */
+body:has(#settingsDialog[open]) { overflow: hidden; }   /* 開いている間は、後ろの画面をスクロールさせない */
+.settings-dialog [hidden] { display: none !important; }
+.settings-dialog :is(input, select, textarea):focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(127, 231, 255, .18); }
+.settings-dialog button:focus-visible { outline: 2px solid rgba(127, 231, 255, .6); outline-offset: 1px; }
+.sd-frame { display: flex; flex-direction: column; height: 100%; }
+.sd-head { display: flex; align-items: center; gap: 14px; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+.sd-head h2 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: .08em; }
+.sd-head input[type="search"] { flex: 1; max-width: 380px; margin-left: auto; }
+.sd-close { background: none; border: 0; color: #9fb7c4; font-size: 26px; line-height: 1; padding: 0 4px; cursor: pointer; }
+.sd-close:hover { color: #fff; }
+.sd-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 190px 1fr; }
+.sd-nav { display: flex; flex-direction: column; gap: 4px; padding: 14px 10px; border-right: 1px solid var(--line); overflow-y: auto; overscroll-behavior: contain; }
+.sd-nav button {
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 0; border-radius: 10px;
+  background: none; color: #b5c1ca; font-size: 14px; font-family: inherit; text-align: left; cursor: pointer;
+}
+.sd-nav button:hover { background: rgba(127, 231, 255, .06); color: var(--text); }
+.sd-nav button[aria-selected="true"] { background: rgba(127, 231, 255, .12); color: var(--accent); box-shadow: inset 2px 0 0 var(--accent); }
+.sd-nav svg { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.sd-pages { overflow-y: auto; overscroll-behavior: contain; padding: 4px 28px 0; }
+.sd-page { display: none; max-width: 620px; padding-bottom: 24px; }
+.sd-page.active, .searching .sd-page { display: block; }
+.searching .sd-page.no-hit { display: none; }
+.sd-page h3 { margin: 16px 0 4px; font-size: 16px; font-weight: 600; letter-spacing: .06em; color: #9fe9ff; }
+.searching .sd-page h3 { margin-top: 22px; padding-bottom: 4px; border-bottom: 1px solid var(--line); font-size: 12px; color: var(--muted); }
+.sd-nohit { display: none; padding: 24px 0; font-size: 13px; color: var(--muted); }
+.sd-nohit.show { display: block; }
+.sd-note { margin: 0; padding: 10px 18px; border-top: 1px solid var(--line); }
+
+/* 1 つの項目: 名前（と今の値）・操作・説明 */
+.setting { padding: 14px 0; border-bottom: 1px solid rgba(40, 52, 62, .6); }
+.setting label { display: block; margin: 0 0 8px; font-size: 13px; font-weight: 500; color: #dbe5ea; }
+.setting .val { margin-left: 6px; font-family: "Consolas", "SFMono-Regular", monospace; color: var(--accent); }
+.setting .hint, .sd-page > .hint { margin: 6px 0 0; font-size: 12px; line-height: 1.6; color: var(--muted); }
+.setting.check { display: flex; align-items: flex-start; gap: 10px; margin: 0; cursor: pointer; }
+.setting.check > input[type="checkbox"] { flex: none; width: 18px; height: 18px; margin: 1px 0 0; accent-color: #7fe7ff; }
+.setting.check > span { font-size: 13px; line-height: 1.5; color: #dbe5ea; }
+.setting.check small { display: block; margin-top: 4px; font-size: 12px; line-height: 1.6; color: var(--muted); }
+.setting.check input[type="number"] { margin: 0 6px; }
+.setting .btn.ghost { margin-top: 10px; }
+.settings-dialog textarea {
   display: block; width: 100%; min-height: 64px; resize: vertical; line-height: 1.55;
   background: #000; color: var(--text); border: 1px solid #2c3a44; border-radius: 8px; padding: 8px 10px; font-size: 13px; font-family: inherit;
 }
-.settings textarea:disabled, .settings input:disabled { opacity: .55; }
-.settings .row .col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.settings .row .col input { flex: none; }
-.persona-actions { margin-top: 14px; }
+.settings-dialog textarea:disabled, .settings-dialog input:disabled { opacity: .55; }
+.settings-dialog .row .col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.settings-dialog .row .col input { flex: none; }
+/* 名前・性格の「保存して反映」は、下までスクロールしなくても押せるように、いつも下に出しておく */
+.persona-foot { position: sticky; bottom: 0; margin-bottom: -24px; padding: 14px 0 16px; background: linear-gradient(transparent, #070c11 18px); }
+.persona-foot .note { margin-top: 8px; }
+.persona-foot .note:empty { display: none; }
+.searching .persona-foot { position: static; }
 .btn.ghost-inline { border-style: dashed; }
+
+/* 狭い画面（スマホ・縦の iPad）: 画面いっぱいに開き、分類は上に横に並べる */
+@media (max-width: 700px) {
+  .settings-dialog { width: 100%; height: 100dvh; max-width: none; max-height: none; border: 0; border-radius: 0; }
+  .sd-head { flex-wrap: wrap; gap: 10px; padding: 12px 14px; }
+  .sd-head input[type="search"] { order: 3; flex-basis: 100%; max-width: none; margin: 0; }
+  .sd-close { margin-left: auto; }
+  .sd-body { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+  .sd-nav { flex-direction: row; gap: 2px; padding: 6px 8px; overflow-x: auto; scrollbar-width: none; border-right: 0; border-bottom: 1px solid var(--line); }
+  .sd-nav::-webkit-scrollbar { display: none; }
+  .sd-nav button { flex: none; padding: 8px 12px; white-space: nowrap; }
+  .sd-nav button[aria-selected="true"] { box-shadow: inset 0 -2px 0 var(--accent); }
+  .sd-pages { padding: 0 16px; }
+}
+
+/* iPad・スマホの Safari は、16px より小さい入力欄を押すと画面を拡大するので、指で使う端末では 16px にする */
+@media (pointer: coarse) {
+  .settings-dialog :is(input, select, textarea) { font-size: 16px; }
+}

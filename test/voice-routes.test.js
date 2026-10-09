@@ -30,7 +30,7 @@ async function setup(sttUrl) {
   };
   const tts = {
     health: async () => ({ ok: true, version: "1" }), speakers: async () => [{ id: 1, name: "声" }],
-    warmup: async (o) => ({ ok: true, got: o }), synthesize: async ({ text }) => Buffer.from("WAV:" + text),
+    warmup: async (o) => ({ ok: true, got: o }), synthesize: async ({ text, mood }) => Buffer.from("WAV:" + text + (mood ? "|" + mood : "")),
   };
   const logged = [];
   const route = createVoiceRoutes({ brain, tts, sttUrl, detectWake: async (text, words) => ({ hit: text.startsWith(words[0]) }), appendLog: (f, o) => logged.push([f, o]) });
@@ -71,6 +71,11 @@ test("呼びかけの判定と、声の合成の API", async () => {
     const r = await s.post("/api/tts", { text: "はい" });
     assert.equal(r.headers.get("content-type"), "audio/wav");
     assert.equal(Buffer.from(await r.arrayBuffer()).toString(), "WAV:はい");
+    // 文の気持ちは文字のときだけ渡す（長すぎる分は切る）
+    const m = await s.post("/api/tts", { text: "やった", mood: "うれしい" });
+    assert.equal(Buffer.from(await m.arrayBuffer()).toString(), "WAV:やった|うれしい");
+    const odd = await s.post("/api/tts", { text: "やった", mood: { x: 1 } });
+    assert.equal(Buffer.from(await odd.arrayBuffer()).toString(), "WAV:やった");
   } finally { s.close(); }
 });
 

@@ -103,6 +103,7 @@ window.AmaneRec = (() => {
       const t = e.target;
       if (t.tagName === "INPUT" || t.tagName === "SELECT" || t.tagName === "TEXTAREA" || t.isContentEditable) return;
       if (e.ctrlKey || e.metaKey || e.altKey || e.repeat || e.isComposing) return;   // Ctrl+R（再読み込み）などでは切り替えない
+      if (window.AmaneSettings?.isOpen()) return;   // 設定を開いているあいだは切り替えない
       if (e.code === "KeyR") set(!isOn());
     });
     try {

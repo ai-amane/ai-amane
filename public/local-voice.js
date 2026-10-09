@@ -1,4 +1,4 @@
-// AI あまね ローカル会話（VOICEVOX モード）
+// AI あまね ローカル会話（AivisSpeech モード。声は AivisSpeech か VOICEVOX）
 //  耳: Web Speech API / 頭: server.js 経由で常駐 Claude Code / 口: VOICEVOX
 //  ElevenLabs の Conversation と同じ形（startSession / endSession / getXxxByteFrequencyData /
 //  sendUserMessage / getId）にして、app.js から差し替えて使えるようにしている。
@@ -10,6 +10,16 @@ window.LocalVoice = (() => {
   const TAG_RE = /<task\b[^>]*>[\s\S]*?<\/task>|<show\b[^>]*\/>|<show\b[^>]*>[\s\S]*?<\/show>|<act\b[^>]*>|<\/act\s*>|<status\s*\/?>|<end\s*\/?>|<hide\s*\/?>/g;
   const OPEN_TAG_RE = /<(task|status|end|show|hide|act)\b[\s\S]*$/;   // まだ閉じていない（続きが届いていない）タグ
   const SOURCES_RE = /(^|\n)\s*(Sources?|出典|参考)\s*[:：]/;          // Web 検索の出典リストの始まり
+  // 声の気持ちの印（[うれしい] など。頭が気持ちの変わる文の頭に書く。気持ちの名前と声の調子は lib/moods.js と同じ）
+  //  全角のかっこ・【】や漢字で書かれても読み取る。気持ちの名前でないかっこ（読み仮名など）は、印とみなさない
+  const MOOD_WORDS = {
+    ふつう: "ふつう", 普通: "ふつう", うれしい: "うれしい", 嬉しい: "うれしい", からかう: "からかう",
+    やさしい: "やさしい", 優しい: "やさしい", おちつく: "おちつく", 落ち着く: "おちつく", かなしい: "かなしい", 悲しい: "かなしい",
+  };
+  const MOOD_SRC = `[\\[［【](${Object.keys(MOOD_WORDS).join("|")})[\\]］】]`;
+  const MOOD_RE = new RegExp(MOOD_SRC);
+  const MOOD_ALL = new RegExp(MOOD_SRC, "g");
+  const MOOD_CUT = /[[［【][^\]］】]{0,4}$/;     // 返事の最後で切れた印
   const MAX_ACTS = 5;        // 1 つの返事で実行する追加機能のタグの数の上限
   const MAX_AUTO_SENDS = 3;  // ユーザーが話さないまま、結果を自動で頭に送る回数の上限（結果 → タグ → 結果 … のくり返しを止める）
   // 言いかけで終わっているか（「〜て」「〜けど」「えーと」など）→ 続きを少し待つ
@@ -57,6 +67,8 @@ window.LocalVoice = (() => {
     .replace(/^\s*[-・●]\s*/gm, "")
     .replace(/\s+/g, " ")
     .trim();
+  // 会話ログに出す返事（タグ・声の気持ちの印・出典リストを除く）
+  const spokenText = (full) => clean(String(full).replace(TAG_RE, "").replace(MOOD_ALL, "").replace(MOOD_CUT, "").split(/\n\s*(?:Sources?|出典)\s*[:：]/)[0]).trim();
 
   // 声を gain 倍に大きくして dest へつなぐ（iPad などは、マイクを使っている間スピーカーの音が小さくなるため）。
   // 大きくしても割れないよう、0 dBFS を超えた分だけを押さえるリミッターを通す（1 倍のときは元の音のまま）
@@ -89,6 +101,7 @@ window.LocalVoice = (() => {
       this.recentSpoken = [];   // 直近に読み上げた文（エコー判定用）
       this.ducked = false;
       this.playGen = 0;         // 割り込まれた回数（合成を待っている間に割り込まれた文を、あとから話さないように）
+      this.mood = "ふつう";     // いま話している返事の気持ち（印が来るまで続く。返事ごとに戻す）
     }
 
     async start() {
@@ -254,9 +267,9 @@ window.LocalVoice = (() => {
     }
     setSensitivity(v) { if (this.vad) this.vad.sensitivity = v; }
     setVolume(v) { if (this.boost) this.boost.gain.setTargetAtTime(v, this.ctx.currentTime, 0.05); }
-    // 声の種類・速さ（設定）。会話中に変えても、次に合成する文から変わる（合成し終えた文は前の声のまま）
-    setVoice({ speaker, speed } = {}) {
-      this.o = { ...this.o, ...(speaker != null && { speaker }), ...(speed != null && { speed }) };
+    // 声の種類・速さ・声に気持ちを込めるか（設定）。会話中に変えても、次に合成する文から変わる（合成し終えた文は前の声のまま）
+    setVoice({ speaker, speed, moods } = {}) {
+      this.o = { ...this.o, ...(speaker != null && { speaker }), ...(speed != null && { speed }), ...(moods != null && { moods }) };
     }
     setMode(m) {
       if (this.mode === m) { if (m === "listening") this.listen(); return; }
@@ -358,7 +371,7 @@ window.LocalVoice = (() => {
       this.inflight = { turn, discard: false, muted: false, played: false, noMore: false, fills: [], clock: clock && { ...clock, sentAt: performance.now() } };
       this.clearFill();
       this.fillTimers = [setTimeout(() => this.fill("wait"), FILL_WAIT_MS), setTimeout(() => this.fill("long"), FILL_LONG_MS)];
-      this.buf = ""; this.full = "";
+      this.buf = ""; this.full = ""; this.mood = "ふつう";
       if (!this.playing) this.setMode("thinking");
       const now = new Date().toLocaleString("ja-JP", { dateStyle: "medium", timeStyle: "short" });
       try {
@@ -387,7 +400,7 @@ window.LocalVoice = (() => {
       else if (ev.type === "done") {
         if (turn && !turn.discard) {
           this.drain(true);                          // 最後の文を読み上げに回す
-          const msg = clean(this.full.replace(TAG_RE, "").split(/\n\s*(?:Sources?|出典)\s*[:：]/)[0]).trim();
+          const msg = spokenText(this.full);
           if (msg) this.o.onMessage?.({ message: msg, role: "agent", source: "ai" });
           if (ev.error && !ev.interrupted) this.o.onError?.("頭の応答でエラー: " + ev.text);
         }
@@ -432,7 +445,8 @@ window.LocalVoice = (() => {
       const body = m.replace(/^<\w+\b[^>]*>/, "").replace(/<\/\w+>$/, "");
       const at = attrs(open);
       if (m.startsWith("<show")) {
-        return this.o.onShow?.({ title: at.title, src: at.src, place: at.place, text: m.endsWith("/>") ? "" : body.trim() });
+        // 声の気持ちの印は、資料の本文にも出さない
+        return this.o.onShow?.({ title: at.title, src: at.src, place: at.place, text: m.endsWith("/>") ? "" : body.replace(MOOD_ALL, "").trim() });
       }
       if (m.startsWith("<hide")) return this.o.onHide?.();
       // 追加機能（plugins.js）。結果を伝えてほしいとき（確認の動作・失敗）は、返ってきた文を頭に送る
@@ -472,7 +486,13 @@ window.LocalVoice = (() => {
       this.o.onMessage?.({ message: text, role: "agent", source: "ai" });
       this.enqueue(text);
     }
+    // 声の気持ちの印で区切り、印のあとの文はその気持ちで話す（返事の最後で切れた印は読まない）
     enqueue(text) {
+      String(text).replace(MOOD_CUT, "").split(MOOD_RE).forEach((part, i) => {
+        if (i % 2) this.mood = MOOD_WORDS[part]; else this.enqueuePart(part);
+      });
+    }
+    enqueuePart(text) {
       const t = clean(text);
       if (!/[ぁ-んァ-ヶ一-龯a-zA-Z0-9]/.test(t)) return;
       if (this.inflight?.muted) return;
@@ -481,16 +501,17 @@ window.LocalVoice = (() => {
       // 返事の最初の文は、合成にかかった時間と、話し始めた時刻を測る（probe）
       const probe = fl?.clock && !fl.played ? { ...fl.clock, firstSentenceAt: performance.now(), chars: t.length } : null;
       if (fl) fl.played = true;
-      const job = this.synth(t);
+      const job = this.synth(t, this.mood);
       // text: 話し始めたときに知らせる文（縦型の収録モードの字幕。onSpeak）
       this.queue.push(Object.assign(probe ? job.then((buf) => { probe.synthDoneAt = performance.now(); return buf; }) : job, { probe, text: t }));
       this.playNext();
     }
-    async synth(text) {
+    // mood: 文の気持ち（設定の「声に気持ちを込める」がオフなら送らない）
+    async synth(text, mood) {
       try {
         const r = await fetch("/api/tts", {
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text, speaker: this.o.speaker ?? 2, speed: this.o.speed ?? 1.15 }),
+          body: JSON.stringify({ text, speaker: this.o.speaker ?? 2, speed: this.o.speed ?? 1.15, ...(mood && this.o.moods !== false && { mood }) }),
         });
         if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || "HTTP " + r.status);
         return await this.ctx.decodeAudioData(await r.arrayBuffer());
@@ -590,7 +611,7 @@ window.LocalVoice = (() => {
         src.onended = () => ctx.close();
       } catch (e) { ctx.close(); throw e; }
     },
-    louder, waitsForMore, cutSources, attrs, TAG_RE, Session,   // テスト用
+    louder, waitsForMore, cutSources, attrs, spokenText, TAG_RE, MOOD_WORDS, Session,   // テスト用
     // 応答の速さ（onTiming）を、会話ログに出す 1 行にする
     timingText(t) {
       const s = (ms) => (Number.isFinite(ms) ? (ms / 1000).toFixed(1) : "-");

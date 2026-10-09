@@ -17,12 +17,13 @@
     btnStandby: $("btnStandby"), btnTalk: $("btnTalk"), btnEnd: $("btnEnd"),
     tasks: $("tasks"), engineInfo: $("engineInfo"),
     btnUsage: $("btnUsage"), usageBar: $("usageBar"), usageText: $("usageText"), usageLast: $("usageLast"),
-    agentId: $("agentId"), btnSaveAgent: $("btnSaveAgent"),
+    agentId: $("agentId"), btnSaveAgent: $("btnSaveAgent"), agentRow: $("agentRow"),
     wakeWords: $("wakeWords"), btnSaveWake: $("btnSaveWake"), btnAddHeard: $("btnAddHeard"),
     sttEngine: $("sttEngine"), sttHints: $("sttHints"), btnSaveHints: $("btnSaveHints"), micSens: $("micSens"), micSensVal: $("micSensVal"),
+    micSensRow: $("micSensRow"), ownerOnlyRow: $("ownerOnlyRow"), showTimingRow: $("showTimingRow"),
     visual: $("visual"), panelScale: $("panelScale"), panelScaleVal: $("panelScaleVal"),
     voiceEngine: $("voiceEngine"), vvRow: $("vvRow"), vvSpeaker: $("vvSpeaker"), vvSpeed: $("vvSpeed"), vvSpeedVal: $("vvSpeedVal"), btnVvTest: $("btnVvTest"),
-    vvVolume: $("vvVolume"), vvVolumeVal: $("vvVolumeVal"),
+    vvVolume: $("vvVolume"), vvVolumeVal: $("vvVolumeVal"), vvMood: $("vvMood"), vvMoodRow: $("vvMoodRow"),
     idleEnd: $("idleEnd"), idleSec: $("idleSec"), autoReport: $("autoReport"), autoStandby: $("autoStandby"), note: $("settingsNote"),
     ownerOnly: $("ownerOnly"), showTiming: $("showTiming"), taskConfirm: $("taskConfirm"),
   };
@@ -567,7 +568,7 @@
   // ---------- 頭+口: ElevenLabs ----------
   async function getSessionConfig() {
     const agentId = (ui.agentId.value || "").trim() || serverCfg.agentId;
-    if (!agentId) throw new Error("Agent ID が未設定です。右下の設定に入力して保存してください（VOICEVOX モードなら不要です）。");
+    if (!agentId) throw new Error(`Agent ID が未設定です。右の「設定」の「声」で入力して保存してください（${ttsName()} モードなら不要です）。`);
     if (serverCfg.signedUrlAvailable) {
       const r = await fetch("/api/signed-url?agentId=" + encodeURIComponent(agentId));
       const j = await r.json();
@@ -612,7 +613,7 @@
       }
       const local = isLocal();
       const cfg = local
-        ? { speaker: Number(ui.vvSpeaker.value || 2), speed: Number(ui.vvSpeed.value || 1.15), volume: vvVolume(), initialText,
+        ? { speaker: Number(ui.vvSpeaker.value || 2), speed: Number(ui.vvSpeed.value || 1.15), volume: vvVolume(), moods: ui.vvMood.checked, initialText,
             stt: useWhisper() ? "whisper" : "browser", hotwords: sttHotwords(), sensitivity: micSens(),
             onInterim: (t) => { ui.heard.textContent = t ? "聞き取り中：" + t : "\u00a0"; AmaneRec.hearing(t); },
             onSpeak: (t) => AmaneRec.speaking(t),
@@ -690,7 +691,7 @@
 
   // ---------- 使用量 ----------
   async function refreshSubscription() {
-    if (isLocal()) { ui.usageText.textContent = "VOICEVOX モード：ElevenLabs のクレジットは消費しません"; return; }
+    if (isLocal()) { ui.usageText.textContent = `${ttsName()} モード：ElevenLabs のクレジットは消費しません`; return; }
     if (!serverCfg.usageAvailable) { ui.usageText.textContent = "APIキーを .env に設定すると表示されます"; return; }
     try {
       const r = await fetch("/api/usage/subscription");
@@ -718,6 +719,8 @@
     }
   }
   ui.btnUsage.onclick = refreshSubscription;
+  // 設定を開いたとき、声の一覧を読めていなければ取り直す（VOICEVOX を後から起動したとき）
+  AmaneSettings.onOpen(() => { if (isLocal() && !speakersLoaded) loadSpeakers(); });
 
   // ---------- 設定 ----------
   function loadSettings() {
@@ -742,7 +745,11 @@
     ui.vvSpeedVal.textContent = Number(ui.vvSpeed.value).toFixed(2);
     ui.vvVolumeVal.textContent = vvVolume().toFixed(2);
     ui.micSensVal.textContent = micSens().toFixed(1);
+    applySttUI();
     document.getElementById("vvSpeakerLabel").textContent = `${ttsName()} の声`;
+    ui.voiceEngine.querySelector('option[value="voicevox"]').textContent = `${ttsName()}（無料・頭は Claude Code）`;
+    ui.vvMood.checked = store.get("vvMood", true);
+    ui.vvMoodRow.style.display = ttsName() === "AivisSpeech" ? "" : "none";   // 声の気持ちは AivisSpeech だけ（lib/moods.js）
     applyEngineUI();
     if (store.get("agentId", "")) note("保存済みのAgent IDを読み込みました。");
     else if (serverCfg.agentId) note(".env のAgent IDを使用しています。");
@@ -795,13 +802,18 @@
   function applyEngineUI() {
     updateCredit();
     const local = isLocal();
-    ui.vvRow.style.display = local ? "" : "none";
+    // 設定の中は、いまの声のエンジンで使う項目だけを出す（settings-panel.js が探すときも、隠した項目は出さない）
+    ui.vvRow.style.display = ui.showTimingRow.style.display = local ? "" : "none";
+    ui.agentRow.style.display = local ? "none" : "";
     if (local && !speakersLoaded) loadSpeakers();
-    ui.usageText.textContent = local ? "VOICEVOX モード：ElevenLabs のクレジットは消費しません" : ui.usageText.textContent;
+    ui.usageText.textContent = local ? `${ttsName()} モード：ElevenLabs のクレジットは消費しません` : ui.usageText.textContent;
     if (!local) refreshSubscription();
   }
+  // マイクの感度・呼びかけた人の声だけを聞くは、ローカル音声認識のときだけ使う
+  function applySttUI() { ui.micSensRow.style.display = ui.ownerOnlyRow.style.display = useWhisper() ? "" : "none"; }
   ui.sttEngine.onchange = async () => {
     store.set("sttEngine", ui.sttEngine.value);
+    applySttUI();
     if (standbyOn) { await stopRecognition(); startRecognition(); }
     if (useWhisper()) { const h = await MicVAD.health(); note(h.ok ? `ローカル音声認識に接続しました（${h.model} / ${h.device}）` : h.error); }
   };
@@ -837,6 +849,7 @@
   // 声の種類・速さは、会話中に変えても次の文から変わる（会話を終えて呼び直さなくてよい）
   ui.vvSpeaker.onchange = () => { store.set("vvSpeaker", Number(ui.vvSpeaker.value)); conversation?.setVoice?.({ speaker: Number(ui.vvSpeaker.value) }); updateCredit(); warmupVoice(); };
   ui.vvSpeed.onchange = () => warmupVoice();   // 速さが変わったら、決まった言葉を合成し直して覚える
+  ui.vvMood.onchange = () => { store.set("vvMood", ui.vvMood.checked); conversation?.setVoice?.({ moods: ui.vvMood.checked }); };
   ui.vvSpeed.oninput = () => { ui.vvSpeedVal.textContent = Number(ui.vvSpeed.value).toFixed(2); store.set("vvSpeed", Number(ui.vvSpeed.value)); conversation?.setVoice?.({ speed: Number(ui.vvSpeed.value) }); };
   // 声の大きさ（iPad などは、マイクを使っている間スピーカーの音が小さくなるので、最初から大きめにする）
   const IS_IOS = /iPad|iPhone/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
@@ -857,7 +870,9 @@
   ui.btnTalk.onclick = () => startConversation();
   ui.btnEnd.onclick = () => endConversation();
   window.addEventListener("keydown", (e) => {
-    if (e.target.tagName === "INPUT") return;
+    const t = e.target;
+    if (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable || e.isComposing) return;
+    if (AmaneSettings.isOpen()) return;   // 設定を開いているときの Space・Esc は、設定の画面で使う
     // ボタン（確認のボタンなど）にフォーカスがあるときの Space は、そのボタンを押すのに使う
     if (e.code === "Space" && e.target.tagName !== "BUTTON") { e.preventDefault(); conversation ? endConversation() : startConversation(); }
     if (e.code === "Escape") endConversation();

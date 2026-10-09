@@ -1,6 +1,6 @@
 {
   "name": "ai-amane",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "private": true,
   "description": "呼びかけると声で応え、PC上の作業もこなす音声AIエージェント（ElevenLabs / VOICEVOX + Claude Code / Codex）",
   "main": "server.js",

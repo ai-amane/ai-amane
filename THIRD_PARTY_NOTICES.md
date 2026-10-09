@@ -55,6 +55,7 @@ THE SOFTWARE.
 
 これらは本リポジトリには含まれず、利用者自身がそれぞれの規約に同意して使います。
 
+- **AivisSpeech（Aivis Project）**: 声のモデルごとにライセンス（クレジット表記・商用利用の条件など）があります。合成した音声を公開する場合は、使う声のモデルのライセンスを確認してください。https://aivis-project.com/
 - **VOICEVOX**: 音声ライブラリ（キャラクター）ごとに利用規約があります。合成した音声を公開する場合は「VOICEVOX:四国めたん」のようなクレジット表記が必要です。https://voicevox.hiroshiba.jp/term/
 - **ElevenLabs**: 無料プランは商用利用できません。https://elevenlabs.io/terms-of-use
 - **Claude Code（Anthropic）/ Codex（OpenAI）**: 各サービスの利用規約・利用上限に従ってください。

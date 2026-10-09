@@ -1,5 +1,5 @@
 // AI あまね 資料の表示パネル
-//  文章・表（簡易 Markdown）・画像・動画・PDF を、パネルに表示する。
+//  文章・表（簡易 Markdown）・画像・動画・PDF・HTML（作業担当が作ったゲームなど）を、パネルに表示する。
 //  パネルは表示するものに合わせて、右・左・中央（大きく）に出す（place）。
 //  AI の姿はパネルをよけて動く（setOnFocus で知らせる。中央に大きく出すときは、後ろで小さくなる）
 window.AmaneViewer = (() => {
@@ -40,6 +40,7 @@ window.AmaneViewer = (() => {
   }
   const isUrl = (s) => /^https?:\/\//i.test(s);
   const fileUrl = (src) => "/api/file?path=" + encodeURIComponent(src);
+  const appUrl = (src) => "/api/app-frame?path=" + encodeURIComponent(src);   // HTML を入れる枠の外側（lib/display-routes.js）
   // ほかのサイトの画像は、ブラウザが直接ではなく、サーバーの中継（家の中の機器には行かない）を通して読む
   const proxied = (url) => "/api/web/image?url=" + encodeURIComponent(url);
   const hostOf = (url) => { try { return new URL(url).hostname; } catch { return ""; } };
@@ -57,7 +58,8 @@ window.AmaneViewer = (() => {
   // 置き場所の指定がないときは、中身で決める（PDF・Web ページ・地図のように大きく見たいものは中央、ほかは右）
   const isYouTube = (src) => /^https?:\/\/([\w-]+\.)?(youtube\.com|youtu\.be|youtube-nocookie\.com)\//i.test(src);
   const isWeb = (src, ext) => /^(map|route):/i.test(src) || (isUrl(src) && !IMAGE_EXT.test(ext) && !/^(mp4|webm)$/.test(ext));
-  const autoPlace = (src, ext) => (isYouTube(src) ? "right" : ext === "pdf" || isWeb(src, ext) ? "center" : "right");
+  const isApp = (src, ext) => !isUrl(src) && /^html?$/.test(ext);   // 作業フォルダの HTML（ゲームや動くページ）
+  const autoPlace = (src, ext) => (isYouTube(src) ? "right" : ext === "pdf" || isWeb(src, ext) || isApp(src, ext) ? "center" : "right");
   const linkHtml = (url, label) => `<p><a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(label || url)}</a></p>`;
   // 自動再生・全画面を許すのは、YouTube と地図の埋め込み（server.js が作った URL）だけ
   const isTrustedEmbed = (url) => /^https:\/\/(www\.youtube-nocookie\.com\/embed\/|maps\.google\.com\/maps\?)/.test(url);
@@ -75,11 +77,22 @@ window.AmaneViewer = (() => {
     body.append(v);
   }
   // sandbox: ほかのサイトのページか（作業フォルダの PDF は、ブラウザの PDF ビューアーが sandbox の中では動かないので付けない）
+  //  "app": 作業フォルダの HTML（ゲームなど）。サーバーの枠の外側のページ（/api/app-frame。スクリプトなし）を読み込み、その中の
+  //  sandbox="allow-scripts" の枠で動く（この画面とは別の、名前のないオリジン。この画面・保存した設定・API・外のサイトには触れない）
   //  sandbox などは、読み込みが始まる前（src を入れて画面に加える前）に付ける。後から付けても、最初の読み込みには効かない
   function showFrame(body, url, { sandbox = true } = {}) {
     body.classList.add("frame");
     const f = document.createElement("iframe");
-    if (sandbox) {
+    if (sandbox === "app") {
+      f.allow = "";
+      f.referrerPolicy = "no-referrer";
+      // ゲームをすぐキーボードで操作できるように、中の枠に入力を向ける。ただし設定の欄などに入力中なら向けない（打っている文字を取られないように）
+      f.addEventListener("load", () => {
+        const a = document.activeElement;
+        if (a && (/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) || a.isContentEditable)) return;
+        try { f.contentDocument?.querySelector("iframe")?.focus(); } catch { /* 外側のページを読めないとき */ }
+      }, { once: true });
+    } else if (sandbox) {
       f.allow = isTrustedEmbed(url) ? "autoplay; encrypted-media; picture-in-picture; fullscreen" : "";
       // ほかのサイトのページは、この画面とは別のオリジンとして動き、この画面には触れられない
       f.setAttribute("sandbox", "allow-scripts allow-same-origin allow-popups allow-forms allow-presentation");
@@ -137,6 +150,14 @@ window.AmaneViewer = (() => {
       else if (src && !external && /^(mp4|webm)$/.test(ext)) showVideo(body, fileUrl(src));
       // 作業フォルダ内の PDF だけ、ブラウザの PDF ビューアーで表示する
       else if (src && !external && ext === "pdf") showFrame(body, fileUrl(src), { sandbox: false });
+      // 作業フォルダの HTML は、隔離した枠の中で動かす（見つからないときなどは、先に理由を出す）
+      else if (src && isApp(src, ext)) {
+        const r = await fetch(fileUrl(src), { method: "HEAD" });
+        if (!r.ok) throw new Error(r.status === 404 ? "ファイルが見つかりません: " + src : r.status === 403 ? "表示できるのは作業フォルダの中のファイルだけです" : "HTTP " + r.status);
+        // 見出しは、作業担当が付けた題名ではなくファイル名と「作業担当が作ったページ」にする（この画面の一部のように見せかけられないように）
+        ui.title.textContent = `${src.split(/[\\/]/).pop()}（作業担当が作ったページ）`;
+        showFrame(body, appUrl(src), { sandbox: "app" });
+      }
       // ほかのサイトのもの（ページ・画像・動画）と地図は、サーバーが先に下調べする
       else if (src && (external || /^(map|route):/i.test(src))) await showWeb(body, src, title);
       else if (src) {

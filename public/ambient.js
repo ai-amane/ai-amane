@@ -60,6 +60,7 @@ window.AmaneAmbient = (() => {
     const t = e.target;
     if (t.tagName === "INPUT" || t.tagName === "SELECT" || t.tagName === "TEXTAREA" || t.isContentEditable) return;
     if (e.ctrlKey || e.metaKey || e.altKey || e.repeat || e.isComposing) return;   // Ctrl+H（履歴）・長押しなどでは切り替えない
+    if (window.AmaneSettings?.isOpen()) return;   // 設定を開いているあいだは切り替えない
     if (e.code === "KeyH") set(!isOn());
   });
   // 万一戻れなくなったときは、URL に ?ambient=0 を付けて開けば解除できる

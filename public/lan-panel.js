@@ -89,5 +89,5 @@
 
   getStatus().then(render);
   // サーバーを起動し直した直後は、LAN の準備が画面より少し遅れるので、設定を開いたときにも取り直す
-  ui.row.closest("details")?.addEventListener("toggle", (e) => { if (e.target.open) getStatus().then(render); });
+  window.AmaneSettings?.onOpen(() => getStatus().then(render));
 })();

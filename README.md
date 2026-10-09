@@ -2,27 +2,28 @@
 
 <img src="docs/images/icon.png" alt="AI あまね のアイコン" width="112" align="right">
 
-**呼びかけると声で応え、話しながら PC の作業もこなす、自分の PC で動く音声 AI エージェント** — v0.4.0
+**呼びかけると声で応え、話しながら PC の作業もこなす、自分の PC で動く音声 AI エージェント** — v0.5.0
 
 ![AI あまね の画面。頼んだ BGM を YouTube で流しながら、カップ麺のタイマーの残り時間を画面の上に出しているところ（曲: Cartoon - On & On (feat. Daniel Levi) [NCS Release]）](docs/images/screenshot.jpg)
 
 「あまね」と呼びかけると、空間に漂う光の粒子が反応して返事をします。雑談や相談の相手をしながら、「〇〇を作って」と頼めば、裏で Codex や Claude Code が作業をして、終わったら声で報告してくれます。
 
 - **呼びかけで起動**して、そのまま声で会話（話の途中で割り込むこともできます）
-- **VOICEVOX モードなら追加料金なし**（考えるのは Claude Code、声は VOICEVOX）
+- **気持ちのこもった声**: 感情豊かな AivisSpeech の声で、うれしい・やさしい・かなしい などの気持ちを文ごとに込めて話します
+- **追加料金なし**（考えるのは Claude Code、声は PC の中で動く AivisSpeech）
 - **作業の依頼**: ファイル作成やプログラム作成を Codex / Claude Code に任せ、終わったら声で報告
 - **画面に資料を表示**: 表・画像・PDF・Web ページ・YouTube・地図・道順（ルート案内）を出すと、AI の姿が場所を空けます
+- **作ったゲームをその場で遊べる**: 「ブロック崩しを作って」と頼むと、作業担当が作ったゲームを画面のパネルで遊べます
 - **タイマー・アラーム**: 「3分たったら教えて」「7時に起こして」。残り時間を画面に出し、時間になったら声で知らせます
 - **機能を足せる**: タイマーのような機能を、プラグインとしてあとから足せます（[作り方](docs/plugins.md)）
 - **AI の設定**: 名前・呼び方・話し方・キャラクター・守ってほしいルールを、画面で変えられます
 - **リビングの iPad から**: 家の Wi-Fi の iPad やスマホを、マイク・スピーカー・画面にして話しかけられます（任意）
-- **声は VOICEVOX か AivisSpeech**（感情豊かな声）から選べます
 - **呼びかけた人の声だけを聞く**: テレビや家族の声に返事をしないようにできます（任意）
 - **音声は PC の中で文字起こし**（ローカル音声認識）。サーバーは PC の外からは接続できません（iPad などから使う設定をオンにした場合も、ペアリングした家の端末だけ）
 
 ![東京駅から東京スカイツリーまでの道順（Google マップのルート案内）を画面に出しているところ](docs/images/display.jpg)
 
-![AI あまね の仕組み（VOICEVOX モード）。声は PC の中で文字にして、常駐の Claude Code が返事を考え、VOICEVOX が声にします。作業は workspace フォルダの中で Codex / Claude Code が行います](docs/images/architecture.png)
+![AI あまね の仕組み（AivisSpeech モード）。声は PC の中で文字にして、常駐の Claude Code が返事を考え、AivisSpeech が気持ちを込めて声にします。作業は workspace フォルダの中で Codex / Claude Code が行います](docs/images/architecture.png)
 
 > [!NOTE]
 > 手順は **Windows** で説明しています。Mac では `start.bat` の代わりに **`start.command`** をダブルクリックして起動します（Linux は `node server.js`）。ZIP でダウンロードした場合、初回は「開発元を検証できません」と出るので、`start.command` を右クリック →「開く」で起動してください。
@@ -47,24 +48,24 @@
 
 ## 1. どの使い方にするか決める
 
-声で会話する部分は、2 つの方式から選べます。**はじめての方は VOICEVOX モードがおすすめ**です。
+声で会話する部分は、2 つの方式から選べます。**はじめての方は AivisSpeech モードがおすすめ**です。
 
-| | VOICEVOX モード（おすすめ） | ElevenLabs モード |
+| | AivisSpeech モード（おすすめ） | ElevenLabs モード |
 |---|---|---|
 | 返事を考える | Claude Code（あなたの PC で動く） | ElevenLabs のサーバー |
-| 声 | VOICEVOX（無料・PC で動く） | ElevenLabs（自然な声） |
+| 声 | AivisSpeech（無料・PC で動く・感情豊か） | ElevenLabs（自然な声） |
 | 必要な契約 | **Claude の有料プラン（Pro 以上）** | ElevenLabs のアカウント |
 | 追加料金 | なし（Claude のプランの利用枠を使う） | 会話した時間ぶんのクレジット |
 | 準備の手間 | 少ない | ElevenLabs 側の設定が必要 |
 
-どちらの場合も、聞き取り（音声認識）は PC の中で行います。
+どちらの場合も、聞き取り（音声認識）は PC の中で行います。AivisSpeech の代わりに VOICEVOX を使うこともできます（[手順](docs/advanced.md#声のエンジンaivisspeech-と-voicevox)）。
 
 ## 2. 必要なもの
 
 **パソコン**
 
 - Windows 10 / 11（64 ビット）
-- メモリ 8GB 以上、空き容量 3GB 以上
+- メモリ 8GB 以上、空き容量 5GB 以上（声のモデルなどを含む）
 - マイク、スピーカーまたはヘッドホン（**ヘッドホンがおすすめ**。スピーカーだと AI が自分の声を聞き取ってしまうことがあります）
 - ブラウザ: Google Chrome か Microsoft Edge
 - インターネット接続
@@ -75,9 +76,9 @@
 |---|---|---|
 | Node.js | AI あまね 本体を動かす | 必須 |
 | Python | 音声認識を動かす | 必須（おすすめ） |
-| Claude Code | VOICEVOX モードで返事を考える・作業をする | VOICEVOX モードなら必須 |
-| VOICEVOX | 声を出す | VOICEVOX モードなら必須 |
-| Codex CLI | 軽い作業をする | 任意 |
+| Claude Code | AivisSpeech モードで返事を考える・作業をする | AivisSpeech モードなら必須 |
+| AivisSpeech | 声を出す | AivisSpeech モードなら必須 |
+| Codex CLI | 軽い作業をする（入れなければ Claude Code が担当） | 任意 |
 
 ## 3. インストール（はじめての方向け・約30分）
 
@@ -113,7 +114,7 @@
 > [!WARNING]
 > `python` と入力して Microsoft Store が開いてしまう場合は、手順 2 のチェックが入っていません。Python をアンインストールして、チェックを入れて入れ直してください。
 
-### 3-4. Claude Code を入れる（VOICEVOX モードで使う場合）
+### 3-4. Claude Code を入れる（AivisSpeech モードで使う場合）
 
 Claude Code は Anthropic 社のツールで、**Claude の有料プラン（Pro 以上）** が必要です。
 
@@ -133,16 +134,18 @@ Claude Code は Anthropic 社のツールで、**Claude の有料プラン（Pro
 
 うまくいかない場合は [公式のインストール手順](https://code.claude.com/docs/en/setup) を参照してください。
 
-### 3-5. VOICEVOX を入れる（VOICEVOX モードで使う場合）
+### 3-5. AivisSpeech を入れる（AivisSpeech モードで使う場合）
 
-1. https://voicevox.hiroshiba.jp/ から、Windows 版をダウンロードしてインストールします。
-2. VOICEVOX を起動します。AI あまね を使っている間は、**VOICEVOX も起動したまま**にしておきます。
-3. NVIDIA のグラフィックボードがある場合は、VOICEVOX の「設定」→「エンジン」で **GPU モード**にすると、声の生成が速くなります。
+1. https://aivis-project.com/ から、AivisSpeech の Windows 版をダウンロードしてインストールします。
+2. AivisSpeech を起動します。**最初の起動では、声のモデルなど（約 900MB）をダウンロードする**ので、終わるまで待ちます。
+3. AI あまね を使っている間は、**AivisSpeech も起動したまま**にしておきます。
 
 > [!TIP]
-> 慣れてきたら、`.env` に `VOICEVOX_AUTOSTART=1` と書くと、AI あまね と一緒に VOICEVOX も自動で起動します。
+> 慣れてきたら、`.env` に `VOICEVOX_AUTOSTART=1` と書くと、AI あまね と一緒に AivisSpeech も自動で起動します（設定の名前は VOICEVOX のときと同じです）。
 >
-> より自然で感情豊かな声にしたいときは、VOICEVOX の代わりに [AivisSpeech](https://aivis-project.com/)（無料）も使えます。手順は [docs/advanced.md](docs/advanced.md#声を-aivisspeech-にする感情豊かな声) を見てください。
+> 声を増やしたいときは、AivisSpeech に声のモデル（AivisHub で公開されています）を入れると、AI あまね の画面でも選べるようになります。
+>
+> AivisSpeech の代わりに [VOICEVOX](https://voicevox.hiroshiba.jp/)（無料）も使えます。手順は [docs/advanced.md](docs/advanced.md#声のエンジンaivisspeech-と-voicevox) を見てください。
 
 ### 3-6. AI あまね をダウンロードする
 
@@ -168,7 +171,7 @@ git clone https://github.com/ai-amane/ai-amane.git
    USER_NAME=田中さん
    ```
 
-   AI からの呼ばれ方です（あとから画面の「AI の設定」でも変えられます）。そのほかの項目は、最初は変えなくて大丈夫です。
+   AI からの呼ばれ方です（あとから画面の設定の「名前・性格」でも変えられます）。そのほかの項目は、最初は変えなくて大丈夫です。
 
 ### 3-8. 起動する
 
@@ -194,11 +197,12 @@ git clone https://github.com/ai-amane/ai-amane.git
 
 ### 4-1. 最初の設定（1 回だけ）
 
-1. 画面右下の **「設定」** を開きます。
-2. **声のエンジン** が「VOICEVOX」になっていることを確認します。
-3. **VOICEVOX の声** を選び、「**試聴**」で声を確認します（声が出ない場合は、VOICEVOX が起動しているか確認してください）。
-4. **呼びかけの言葉** は最初「あまね」です。好きな呼び名に変えて「保存」することもできます。
-5. 必要なら **「AI の設定」** を開き、AI の名前・呼ばれ方・話し方・守ってほしいルール・住んでいる地域などを書いて「保存して反映」を押します（[詳しく](docs/advanced.md#名前性格ルールを変えるai-の設定)）。
+1. 画面右下の **「設定」** を押します。設定は「声」「聞き取り」「会話」などに分かれています（上の欄で探すこともできます）。
+2. 「声」の **声のエンジン** が「AivisSpeech」になっていることを確認します。
+3. **AivisSpeech の声** を選び、「**試聴**」で声を確認します（声が出ない場合は、AivisSpeech が起動しているか確認してください）。
+4. **声に気持ちを込める** がオンになっていることを確認します。AI が文ごとに、うれしい・やさしい などの声の調子に変えて話します。
+5. 「会話」の **呼びかけの言葉** は最初「あまね」です。好きな呼び名に変えて「保存」することもできます。
+6. 必要なら **「名前・性格」** を開き、AI の名前・呼ばれ方・話し方・守ってほしいルール・住んでいる地域などを書いて「保存して反映」を押します（[詳しく](docs/advanced.md#名前性格ルールを変えるai-の設定)）。
 
 ### 4-2. 話しかける
 
@@ -218,6 +222,7 @@ git clone https://github.com/ai-amane/ai-amane.git
 | 「〇〇を作って」→「お願い」 | 作業担当に頼む前に、画面に確認が出ます。「お願い」と言うかボタンを押すと始まります（設定の「作業を頼む前に確認する」で変えられます） |
 | 「3分たったら教えて」「7時に起こして」 | タイマー・アラームをセットします（「あと何分？」「タイマー止めて」も） |
 | 「東京駅の地図を出して」 | 地図を画面の中央に出します |
+| 「簡単なブロック崩しを作って」 | 作業担当がゲームを作り、画面のパネルで遊べます（キーボードやマウスで操作） |
 | 「東京駅からスカイツリーまで電車でどう行く？」 | 道順（Google マップのルート案内）を画面に出します |
 | 「閉じて」 | 表示を閉じます |
 | 「ストップ」「待って」 | 話している途中でも黙ります |
@@ -237,7 +242,7 @@ git clone https://github.com/ai-amane/ai-amane.git
 
 | 作業の重さ | 担当 | 例 |
 |---|---|---|
-| 軽い作業 | Codex CLI（入っていなければ Claude Code にする設定も可） | 「メモを作って」「ファイルの一覧を見せて」 |
+| 軽い作業 | Claude Code（Sonnet）。Codex CLI を入れれば Codex にもできます | 「メモを作って」「ファイルの一覧を見せて」 |
 | 重い作業 | Claude Code（Opus） | 「〇〇のプログラムを作って」「この資料を調べてまとめて」 |
 
 **Codex CLI を入れる場合**（ChatGPT の有料プランが必要）
@@ -247,7 +252,7 @@ npm install -g @openai/codex
 codex login
 ```
 
-Codex を使わない場合は、`.env` の `LIGHT_ENGINE=codex-fast` を `LIGHT_ENGINE=claude-sonnet` に変えてください。
+Codex を入れたら、`.env` の `LIGHT_ENGINE=claude-sonnet` を `LIGHT_ENGINE=codex-fast` に変えると、軽い作業を Codex が担当します。
 
 > [!IMPORTANT]
 > 作業は、フォルダの中の **`workspace`** フォルダの中だけで行います。作られたファイルもここに保存されます。安全のため、大事なファイルは `workspace` に置かないでください。
@@ -261,13 +266,13 @@ Codex を使わない場合は、`.env` の `LIGHT_ENGINE=codex-fast` を `LIGHT
 | `[stt]` のエラーが出て音声認識が起動しない | 黒いウィンドウのエラーの内容を確認してください。`start-stt.bat` を単体で起動すると、詳しいエラーが見られます。 |
 | 「待受をオン」にしても反応しない | 画面中央の「聞こえた言葉」に何か出るか確認してください。何も出なければ、マイクがブラウザと Windows（設定 → プライバシーとセキュリティ → マイク）で許可されているか確認します。 |
 | 呼んでも反応しない（聞こえた言葉は出る） | 呼びかけは話し始めに言ってください（「あまね」「ねえ、あまね」など。文の途中の「あまね」には反応しません）。聞こえた言葉が呼びかけの言葉と違う場合は、設定の「いま聞こえた言葉を追加」で登録できます。 |
-| VOICEVOX に接続できない | VOICEVOX が起動しているか確認してください。 |
+| AivisSpeech に接続できない | AivisSpeech が起動しているか確認してください（最初の起動は、声のモデルのダウンロードで時間がかかります）。VOICEVOX を使う場合は、`.env` の `VOICEVOX_URL` が `http://127.0.0.1:50021` になっているか確認してください。 |
 | 声が出ない | 画面を一度クリックしてください。ブラウザはクリックするまで音を出せません。 |
 | 返事が来ない（考えています のまま） | Claude Code にログインしているか、コマンドプロンプトで `claude` を起動して確認してください。 |
 | AI が自分の声に反応して止まる | ヘッドホンを使うと解決します。 |
 | テレビをつけていると、呼んでも反応しない | テレビの声と重なると、聞き取れないことがあります。テレビの声が途切れたときに呼ぶか、音量を下げてください（ドライヤーなど声ではない音には、数秒で慣れます）。 |
 | 物音や小さな声に反応しすぎる／反応しない | 設定の「マイクの感度」で調整できます（周りの話し声を拾うときは下げる）。物音には `.env` の `STT_MIN_SPEECH`（初期値 0.3 秒）も効きます。 |
-| 返事が遅い | 設定の「返事までにかかった時間を会話ログに出す」をオンにすると、どこに時間がかかっているかが分かります。頭（Claude Code）が遅いときは、`.env` の `BRAIN_MODEL` を `haiku` にすると速くなります（返事は簡単になります）。詳しくは [docs/advanced.md](docs/advanced.md#返事の速さvoicevox-モード) を見てください。 |
+| 返事が遅い | 設定の「返事までにかかった時間を会話ログに出す」をオンにすると、どこに時間がかかっているかが分かります。頭（Claude Code）が遅いときは、`.env` の `BRAIN_MODEL` を `haiku` にすると速くなります（返事は簡単になります）。詳しくは [docs/advanced.md](docs/advanced.md#返事の速さaivisspeech-モード) を見てください。 |
 | 「ポート 3939 を別のプログラムが使っています」 | 前に開いた黒いウィンドウを閉じるか、`.env` の `PORT` を変えてください。 |
 
 解決しない場合は、黒いウィンドウの表示を添えて [Issue](https://github.com/ai-amane/ai-amane/issues) で教えてください（API キーなどが写っていないか確認してから貼ってください）。
@@ -277,7 +282,7 @@ Codex を使わない場合は、`.env` の `LIGHT_ENGINE=codex-fast` を `LIGHT
 **料金**
 
 - AI あまね 自体は無料です。
-- VOICEVOX モード: Claude の有料プランの利用枠を使います（追加の請求はありません）。画面の「使用量」に出る金額は、API で使った場合の参考値です。
+- AivisSpeech モード: Claude の有料プランの利用枠を使います（追加の請求はありません）。画面の「使用量」に出る金額は、API で使った場合の参考値です。
 - ElevenLabs モード: 会話した時間ぶんの ElevenLabs のクレジットを使います。
 - 作業の依頼: Claude / ChatGPT の各プランの利用枠を使います。Codex の Fast モードは、通常より多く利用枠を消費します。
 
@@ -298,14 +303,14 @@ Codex を使わない場合は、`.env` の `LIGHT_ENGINE=codex-fast` を `LIGHT
 
 **アップデート**: 新しい版を ZIP でダウンロードし、`.env` をコピーして新しいフォルダに入れてください（Git の場合は `git pull`）。
 
-**アンインストール**: AI あまね のフォルダを削除すれば完了です。音声認識のモデルもフォルダの中（`models`）にあります。Node.js・Python・VOICEVOX・Claude Code は、Windows の「アプリ」から個別にアンインストールできます。
+**アンインストール**: AI あまね のフォルダを削除すれば完了です。音声認識のモデルもフォルダの中（`models`）にあります。Node.js・Python・AivisSpeech・Claude Code は、Windows の「アプリ」から個別にアンインストールできます。
 
 ## 9. ライセンス・クレジット
 
 - AI あまね は [MIT ライセンス](LICENSE) で公開しています。
 - 利用しているライブラリ・モデルのライセンスは [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) をご覧ください。
-- **VOICEVOX の声を使った音声を動画などで公開する場合は、「VOICEVOX:四国めたん」のようなクレジット表記が必要です。** キャラクターごとの利用規約も確認してください。
+- **声を使った音声を動画などで公開する場合は、声ごとの利用規約を確認してください。** AivisSpeech の声は、声のモデルごとにライセンス（クレジット表記や商用利用の条件）が決まっています（AivisHub のモデルのページで確認できます）。VOICEVOX の声は「VOICEVOX:四国めたん」のようなクレジット表記が必要です。縦型の収録モードでは、選んでいる声の名前を画面の隅に出します。
 - ElevenLabs・Claude Code・Codex は、それぞれのサービスの利用規約に従ってご利用ください。
-- このプロジェクトは、Anthropic・OpenAI・ElevenLabs・VOICEVOX の公式プロジェクトではありません。
+- このプロジェクトは、Anthropic・OpenAI・ElevenLabs・Aivis Project・VOICEVOX の公式プロジェクトではありません。
 
 変更履歴は [CHANGELOG.md](CHANGELOG.md) をご覧ください。

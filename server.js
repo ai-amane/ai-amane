@@ -13,6 +13,7 @@ const { sendJson, readBody, crossSiteApi, routeTable } = require("./lib/http-uti
 const { startLanServer, LOCAL_ONLY } = require("./lib/lan-server");
 const { createBrain } = require("./lib/brain");
 const { createTts } = require("./lib/tts");
+const { moodPrompt } = require("./lib/moods");
 const { detectWake, getTokenizer } = require("./lib/wake");
 const { createRouter } = require("./lib/task-router");
 const { createTaskRunner, engineLabel } = require("./lib/tasks");
@@ -42,7 +43,7 @@ const API_KEY = env("ELEVENLABS_API_KEY");
 const PUBLIC_DIR = path.join(__dirname, "public");
 const LOG_DIR = path.join(__dirname, "logs");
 const WORKDIR = path.resolve(env("TASK_WORKDIR", path.join(__dirname, "workspace")));
-const LIGHT_ENGINE = env("LIGHT_ENGINE", "codex-fast");
+const LIGHT_ENGINE = env("LIGHT_ENGINE", "claude-sonnet");   // Codex を入れたら codex-fast にすると速い
 const HEAVY_ENGINE = env("HEAVY_ENGINE", "claude-opus");
 const ROUTER = env("ROUTER", "auto"); // auto | laya | hint | rules
 // 家の Wi-Fi の iPad などから使う（https://この PC の IP アドレス:LAN_PORT。lib/lan-server.js）
@@ -51,7 +52,8 @@ const LAN_PORT = Number(env("LAN_PORT", 3942));
 const LAN_DIR = path.join(__dirname, "data", "lan");
 // 画面に表示してよいフォルダ（作業フォルダ + .env の SHOW_DIRS をセミコロン区切りで）
 const SHOW_DIRS = [WORKDIR, ...env("SHOW_DIRS").split(";").map((d) => d.trim()).filter(Boolean).map((d) => path.resolve(d))];
-const VOICEVOX_URL = env("VOICEVOX_URL", "http://127.0.0.1:50021");
+// 声の合成のエンジン。既定は AivisSpeech（感情豊か。ポート 10101）。VOICEVOX は 50021
+const VOICEVOX_URL = env("VOICEVOX_URL", "http://127.0.0.1:10101");
 // AivisSpeech（VOICEVOX と同じ使い方の、感情豊かな音声合成。既定のポートは 10101）を使っているか。名前は表示とエラーに使う
 const IS_AIVIS = env("TTS_ENGINE", /:10101(\/|$)/.test(VOICEVOX_URL) ? "aivisspeech" : "voicevox").toLowerCase() === "aivisspeech";
 const TTS_NAME = IS_AIVIS ? "AivisSpeech" : "VOICEVOX";
@@ -101,13 +103,14 @@ const persona = createPersona({
   blockSave: () => (tasks.active(CONFIRM_BLOCK_AFTER_TASK_MS) ? "作業担当が動いている間（終わってから 2 分まで）は、AI の設定を変えられません。少し待ってから保存してください" : ""),
 });
 const brain = createBrain({
-  bin: env("CLAUDE_BIN", "claude"), model: env("BRAIN_MODEL", "haiku"),
+  bin: env("CLAUDE_BIN", "claude"), model: env("BRAIN_MODEL", "sonnet"),
   tools: env("BRAIN_TOOLS", "WebSearch").split(/[,\s]+/).filter(Boolean),
   idleMin: Math.max(1, Number(env("BRAIN_IDLE_MIN", 20)) || 20), thinkingTokens: env("BRAIN_THINKING_TOKENS", "0"), workdir: WORKDIR,
   promptSrc: path.join(__dirname, "prompts", "local-brain-system-prompt.md"), promptFile: path.join(LOG_DIR, "brain-system-prompt.md"),
-  vars: () => persona.vars(), promptExtra: () => [persona.prompt(), plugins.prompt()].filter(Boolean).join("\n\n"),
+  // 声の気持ち（[うれしい] などの印）の説明は、AivisSpeech のときだけ付ける（VOICEVOX では使わない。lib/moods.js）
+  vars: () => persona.vars(), promptExtra: () => [IS_AIVIS && moodPrompt(), persona.prompt(), plugins.prompt()].filter(Boolean).join("\n\n"),
 });
-const tts = createTts({ url: VOICEVOX_URL, name: TTS_NAME });
+const tts = createTts({ url: VOICEVOX_URL, name: TTS_NAME, isAivis: IS_AIVIS });
 const tasks = createTaskRunner({
   env, workdir: WORKDIR, aiName: () => persona.get().aiName, lightEngine: LIGHT_ENGINE, heavyEngine: HEAVY_ENGINE,
   decideLevel: createRouter({ router: ROUTER, layaUrl: env("LAYA_URL", "http://127.0.0.1:3940"), minConfidence: Number(env("LAYA_MIN_CONFIDENCE", 0.6)) }),
@@ -270,7 +273,7 @@ async function startLan() {
   try {
     lan = await startLanServer({ port: LAN_PORT, dataDir: LAN_DIR, publicDir: PUBLIC_DIR, handle });
     lanError = "";
-    console.log(`  iPad などから:      ${lan.urls[0]}（つなぎ方: 画面の 設定 →「iPad・スマホからつなぐ」）`);
+    console.log(`  iPad などから:      ${lan.urls[0]}（つなぎ方: 画面の「設定」→「iPad・スマホ」）`);
     for (const w of lan.status().warnings) console.warn("  [lan] " + w);
   } catch (e) {
     const why = e.code === "EADDRINUSE" ? `ポート ${LAN_PORT} を別のプログラムが使っています。.env の LAN_PORT を変えてください` : e.message;
