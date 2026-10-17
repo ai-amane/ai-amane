@@ -229,3 +229,101 @@ test("声の確認: 鳴らしたあとの wav は消す。--no-play では残す
   await S.stepVoice(b.d, { check: false, noPlay: true });
   assert.equal(b.calls.some((c) => c[0] === "removeFile" || c[0] === "play"), false);
 });
+
+// ---------- Mac ----------
+const APP = "/Applications/AivisSpeech.app";
+const APP_RUN = APP + "/Contents/Resources/AivisSpeech-Engine/run";
+// Mac の PC。python3.12 だけある。AivisSpeech は動いていない（openApp で動き出す）。execs に実行した外のコマンドを残す
+function macDeps(root, { running = false, aivisApp = true, venv = false, portBusy = false, pyOk = false } = {}) {
+  const execs = [];
+  let up = running;
+  const venvPy = path.join(root, ".venv", "bin", "python");
+  const { d, calls, logs } = fakeDeps(root, {
+    platform: "darwin",
+    exists: (p) => (p === APP_RUN ? aivisApp : p === venvPy ? venv : fs.existsSync(p)),
+    candidates: () => [APP_RUN],
+    exec: (cmd, args) => {
+      execs.push([cmd, ...args]);
+      if (args[0] === "auth") return { status: 0, stdout: LOGGED_IN };
+      if (cmd === "python3.12") return { status: 0, stdout: "Python 3.12.1" };
+      if (/^python3\.1[01]$/.test(cmd)) return { status: 1, stdout: "" };
+      if (cmd === venvPy && args[0] === "-c") return { status: pyOk ? 0 : 1, stdout: "" };
+      return { status: 0, stdout: "" };
+    },
+    fetchImpl: async (u) => {
+      if (!up) throw new Error("down");
+      return { ok: true, status: 200, arrayBuffer: async () => new ArrayBuffer(4), json: async () => (/speakers/.test(u) ? [{ name: "A", styles: [{ id: 7, name: "n" }] }] : {}) };
+    },
+    openApp: (a) => { calls.push(["openApp", a]); up = true; },
+    portInUse: async () => portBusy,
+  });
+  return { d, calls, logs, execs, venvPy };
+}
+
+test("Mac: .venv を作り、音声認識のパッケージを入れる", () => {
+  const root = setupRoot();
+  const { d, execs, venvPy } = macDeps(root);
+  assert.equal(S.stepPip(d, { check: false }), true);
+  assert.deepEqual(execs.find((e) => e.includes("venv")), ["python3.12", "-m", "venv", path.join(root, ".venv")]);
+  assert.ok(execs.some((e) => e[0] === venvPy && e.includes("pip") && e.includes("sherpa-onnx")));
+});
+
+test("Mac: .env に PYTHON_BIN があれば、音声認識のパッケージは飛ばす", () => {
+  const root = setupRoot();
+  fs.writeFileSync(path.join(root, ".env"), "PYTHON_BIN=/opt/py/bin/python\n");
+  const { d, execs } = macDeps(root);
+  assert.equal(S.stepPip(d, { check: false }), true);
+  assert.deepEqual(execs, []);
+});
+
+test("Mac: --check では .venv も pip も実行しない", () => {
+  const root = setupRoot();
+  const { d, execs } = macDeps(root);
+  assert.equal(S.stepPip(d, { check: true }), true);
+  assert.equal(execs.some((e) => e.includes("venv") || e.includes("pip")), false);
+});
+
+test("Mac: AivisSpeech はアプリとして開き、pid を持たない（止めない）", async () => {
+  const root = setupRoot({ env: true });
+  const { d, calls } = macDeps(root);
+  const r = await S.stepAivis(d, { check: false });
+  assert.equal(r.found, true);
+  assert.equal(r.pid, undefined);
+  assert.deepEqual(calls.find((c) => c[0] === "openApp"), ["openApp", APP]);
+  assert.equal(calls.some((c) => c[0] === "spawnEngine"), false);
+  assert.equal(S.appBundleOf(APP_RUN), APP);
+  assert.equal(S.appBundleOf("C:\\x\\run.exe"), null);
+});
+
+test("Mac: afplay で鳴らす経路（play を呼び、wav を消す）", async () => {
+  const root = setupRoot({ env: true });
+  const { d, calls } = macDeps(root, { running: true });
+  assert.equal(await S.stepVoice(d, { check: false, noPlay: false }), true);
+  assert.ok(calls.some((c) => c[0] === "play"));
+  assert.ok(calls.some((c) => c[0] === "removeFile"));
+});
+
+test("Mac: ポートが空なら終了コード 10、AivisSpeech は止めない", async () => {
+  const root = setupRoot({ env: true });
+  const { d, calls, logs } = macDeps(root, { pyOk: true });
+  assert.equal(await S.run(["--no-play"], d), S.EXIT_START_HERE);
+  assert.equal(S.EXIT_START_HERE, 10);
+  assert.equal(calls.some((c) => c[0] === "killTree" || c[0] === "startBat"), false);
+  assert.ok(logs.some((l) => l.includes("このまま あまね を起動します")));
+});
+
+test("Mac: ポートが使われていれば、open だけで 0", async () => {
+  const root = setupRoot({ env: true });
+  const { d, calls } = macDeps(root, { pyOk: true, portBusy: true });
+  assert.equal(await S.run(["--no-play"], d), 0);
+  assert.ok(calls.some((c) => c[0] === "openUrl"));
+  assert.equal(calls.some((c) => c[0] === "startBat"), false);
+});
+
+test("Mac: --check では何も実行せず 0 で終わる", async () => {
+  const root = setupRoot({ env: true });
+  const { d, calls, execs } = macDeps(root, { running: true, venv: true, pyOk: true });
+  assert.equal(await S.run(["--check"], d), 0);
+  for (const n of ["writeText", "writeBin", "play", "openApp", "spawnEngine", "openUrl", "startBat", "killTree"]) assert.equal(calls.some((c) => c[0] === n), false, n);
+  assert.equal(execs.some((e) => e.includes("venv") || e.includes("pip") || e.includes("install") || e.includes("login")), false);
+});

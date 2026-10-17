@@ -1,5 +1,9 @@
 # 変更履歴
 
+## v0.6.1（2026-10-18）
+
+- Mac の「かんたんセットアップ」を追加しました。`setup.command` を右クリック →「開く」で開くと、Node.js・Python 3.12 が無ければ公式のインストーラーを開いて案内し（Homebrew があれば Homebrew で入れます）、Claude Code を公式の入れ方で入れ、Claude のログインと AivisSpeech の導入を案内し、`.env` を作り、あまね の声を一度鳴らしてから、同じ窓で起動します（README の 3-0）。作ったばかりの版なので、うまくいかないときは README の「Mac で手で入れる場合」で進めてください
+
 ## v0.6.0（2026-10-18）
 
 - Windows の「かんたんセットアップ」を追加しました。`setup.bat` をダブルクリックすると、Node.js・Python・Claude Code が入っていなければ入れ（winget と Claude Code の公式の入れ方を使います）、Claude のログインと AivisSpeech の導入を案内し、`.env` を作り、あまね の声を一度鳴らしてから起動します。すでに入っているものは飛ばし、すでにある `.env` は書き換えません（README の 3-0）
