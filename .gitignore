@@ -8,6 +8,7 @@ models/
 # 追加機能: 同梱のもの以外（自分で入れたもの・購入したもの）は入れない
 plugins/*
 !plugins/timer/
+!plugins/weather/
 
 # 実行時に作られるもの
 logs/

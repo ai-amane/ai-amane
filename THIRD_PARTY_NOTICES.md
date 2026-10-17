@@ -58,5 +58,6 @@ THE SOFTWARE.
 - **AivisSpeech（Aivis Project）**: 声のモデルごとにライセンス（クレジット表記・商用利用の条件など）があります。合成した音声を公開する場合は、使う声のモデルのライセンスを確認してください。https://aivis-project.com/
 - **VOICEVOX**: 音声ライブラリ（キャラクター）ごとに利用規約があります。合成した音声を公開する場合は「VOICEVOX:四国めたん」のようなクレジット表記が必要です。https://voicevox.hiroshiba.jp/term/
 - **ElevenLabs**: 無料プランは商用利用できません。https://elevenlabs.io/terms-of-use
+- **気象庁の天気予報のデータ**: 天気予報（`plugins/weather`）は、気象庁ホームページの予報のデータを取って使います（出典: 気象庁ホームページ）。天気のコードと言葉の表（`plugins/weather/telops.js`）も、気象庁ホームページのものです。公式の API ではないため、データの形が変わると使えなくなることがあります。https://www.jma.go.jp/jma/kishou/info/coment.html
 - **Claude Code（Anthropic）/ Codex（OpenAI）**: 各サービスの利用規約・利用上限に従ってください。
 - **ブラウザの音声認識（Web Speech API）**: 「ブラウザの音声認識」を選んだ場合、音声は Google（Chrome）または Microsoft（Edge）のサーバーに送られます。

@@ -22,6 +22,7 @@ const { createVoiceRoutes } = require("./lib/voice-routes");
 const { createDisplayRoutes } = require("./lib/display-routes");
 const { createPlugins } = require("./lib/plugins");
 const { createPersona } = require("./lib/persona");
+const { createPhrases, runClaude } = require("./lib/phrases");
 
 // ---------- .env ----------
 const envPath = path.join(__dirname, ".env");
@@ -99,7 +100,7 @@ const plugins = createPlugins({
 //  保存したら、返答中でなければすぐ頭を起動し直して反映する
 //  作業担当が動いている間（終わってから 2 分まで）は保存を断る（だまされた作業担当が、ずっと残るルールを書き込めないように）
 const persona = createPersona({
-  file: path.join(__dirname, "data", "persona.json"), env, onChange: () => brain.refresh({ soon: true }),
+  file: path.join(__dirname, "data", "persona.json"), env, onChange: () => { brain.refresh({ soon: true }); phrases.get(); },
   blockSave: () => (tasks.active(CONFIRM_BLOCK_AFTER_TASK_MS) ? "作業担当が動いている間（終わってから 2 分まで）は、AI の設定を変えられません。少し待ってから保存してください" : ""),
 });
 const brain = createBrain({
@@ -111,6 +112,12 @@ const brain = createBrain({
   vars: () => persona.vars(), promptExtra: () => [IS_AIVIS && moodPrompt(), persona.prompt(), plugins.prompt()].filter(Boolean).join("\n\n"),
 });
 const tts = createTts({ url: VOICEVOX_URL, name: TTS_NAME, isAivis: IS_AIVIS });
+// 決まった言葉（あいさつ・つなぎの言葉・作業の報告の始め）。話し方に合わせて一度だけ作り、data/phrases.json に覚えておく
+//  （話し方を保存したら作り直す。作っている間と、作れなかったときは用意した言葉。lib/phrases.js）
+const phrases = createPhrases({
+  file: path.join(__dirname, "data", "phrases.json"), persona: () => persona.get(),
+  generate: (prompt) => runClaude({ bin: env("CLAUDE_BIN", "claude"), model: env("PHRASES_MODEL", "haiku"), prompt }),
+});
 const tasks = createTaskRunner({
   env, workdir: WORKDIR, aiName: () => persona.get().aiName, lightEngine: LIGHT_ENGINE, heavyEngine: HEAVY_ENGINE,
   decideLevel: createRouter({ router: ROUTER, layaUrl: env("LAYA_URL", "http://127.0.0.1:3940"), minConfidence: Number(env("LAYA_MIN_CONFIDENCE", 0.6)) }),
@@ -249,7 +256,7 @@ async function handle(req, res, from) {
     if (from !== "local" && LOCAL_ONLY.test(p)) return sendJson(res, 403, { error: "この操作は PC の画面からだけできます" });
     if (crossSiteApi(req, p)) return sendJson(res, 403, { error: "ほかのサイトからは使えません" });
     req.amaneFrom = from;   // 追加機能の「PC の画面からだけ」の動作の判定に使う（lib/plugins.js）
-    for (const route of [otherRoutes, voiceRoutes, displayRoutes, plugins.routes, persona.routes]) if (await route(req, res, url)) return;
+    for (const route of [otherRoutes, voiceRoutes, displayRoutes, plugins.routes, persona.routes, phrases.routes]) if (await route(req, res, url)) return;
     if (await patternRoutes(req, res, p)) return;
   } catch (e) {
     console.error(`[api] ${p} failed:`, e.message);

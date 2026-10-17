@@ -158,3 +158,36 @@ test("声の気持ち: 画面に出す資料（<show>）からも印を消す。
   const { spokenText } = loadLocalVoice();
   assert.equal(spokenText("わかりました。[やさ"), "わかりました。");
 });
+
+test("つなぎの言葉: 話し方に合わせて作った言葉を使う（空の場面・文字列でないものは、用意した言葉のまま）", () => {
+  const { fillersOf, Session } = loadLocalVoice();
+  const f = fillersOf({ wait: ["ちょっと待ってね。"], search: [], long: [1, 2], greeting: ["なに？"] });
+  assert.deepEqual([...f.wait], ["ちょっと待ってね。"]);
+  assert.ok(f.search.includes("調べてみますね。"));
+  assert.ok(f.long.includes("もう少しお待ちください。"));
+  assert.equal(f.greeting, undefined);   // あいさつは、つなぎの言葉ではない
+  assert.ok(fillersOf(null).wait.includes("少々お待ちください。"));
+  assert.deepEqual([...new Session({ phrases: { search: ["調べてみるね！"] } }).fillers.search], ["調べてみるね！"]);
+});
+
+test("出典: 会話ログも、読み上げと同じく「参考:」の行から後を出さない", () => {
+  const { spokenText } = loadLocalVoice();
+  assert.equal(spokenText("明日は晴れだよ。\n参考: tenki.jp"), "明日は晴れだよ。");
+});
+
+test("つなぎの言葉: ユーザーの発言への返事だけ待ち時間を数える（作業の報告・追加機能の結果への返事には入れない）", async () => {
+  const timers = [];
+  const ctx = vm.createContext({
+    window: {}, performance: { now: () => 0 }, setTimeout: (fn, ms) => { timers.push(ms); return timers.length; }, clearTimeout: () => {},
+    fetch: async () => ({ ok: true, json: async () => ({}), arrayBuffer: async () => new ArrayBuffer(0) }),
+  });
+  vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "public", "local-voice.js"), "utf8"), ctx);
+  const s = new ctx.window.LocalVoice.Session({ speaker: 3200 });
+  s.active = true;
+  s.setMode = () => {};
+  await s.dispatch("［作業完了の通知］…");
+  assert.deepEqual(timers, []);
+  s.inflight = null;
+  await s.dispatch("明日の天気は？", { from: "talk", heardAt: 0 });
+  assert.deepEqual(timers, [3500, 12000]);
+});

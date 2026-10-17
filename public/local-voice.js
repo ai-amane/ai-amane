@@ -34,6 +34,7 @@ window.LocalVoice = (() => {
   const waitsForMore = (s) => INCOMPLETE.test(bare(s)) && !ASKED.test(s);
   const HOLD_MS = 1100;          // 言いかけのときに続きを待つ時間
   // 返事を考えるのに時間がかかるときの、つなぎの言葉（黙ったまま待たせない）
+  //  ここにあるのは用意した言葉。ふだんは、サーバーが話し方に合わせて作った言葉（opts.phrases。lib/phrases.js）を使う
   const FILLERS = {
     wait: ["少々お待ちください。", "ちょっと考えますね。", "えーっと、少々お待ちを。"],
     search: ["調べてみますね。", "少し調べます。"],
@@ -42,6 +43,9 @@ window.LocalVoice = (() => {
   const FILL_WAIT_MS = 3500;     // これだけ待っても話し始めなければ「少々お待ちください」
   const FILL_LONG_MS = 12000;    // さらに長くかかっているときに、もう一度
   const pick = (list) => list[Math.floor(Math.random() * list.length)];
+  // 作った言葉のうち、使える場面だけを用意した言葉と差し替える（空の場面・文字列でないものは、用意した言葉のまま）
+  const usable = (list) => Array.isArray(list) && list.length > 0 && list.every((t) => typeof t === "string" && t.trim());
+  const fillersOf = (phrases) => ({ ...FILLERS, ...Object.fromEntries(Object.keys(FILLERS).filter((k) => usable(phrases?.[k])).map((k) => [k, phrases[k]])) });
   const GREETING = "はい、お呼びでしょうか。";
   const VOICEPRINT_MAX_MS = 6000;   // 声紋を使うとき、1 回に聞き取る長さの上限（周りの音で区切りが来なくても待たせない）
   const CONTINUE_MS = 7000;      // 送ってからこの時間内に話し始めたら「続き」とみなす（まだ返事を話し始めていない場合）
@@ -68,7 +72,7 @@ window.LocalVoice = (() => {
     .replace(/\s+/g, " ")
     .trim();
   // 会話ログに出す返事（タグ・声の気持ちの印・出典リストを除く）
-  const spokenText = (full) => clean(String(full).replace(TAG_RE, "").replace(MOOD_ALL, "").replace(MOOD_CUT, "").split(/\n\s*(?:Sources?|出典)\s*[:：]/)[0]).trim();
+  const spokenText = (full) => clean(String(full).replace(TAG_RE, "").replace(MOOD_ALL, "").replace(MOOD_CUT, "").split(/\n\s*(?:Sources?|出典|参考)\s*[:：]/)[0]).trim();   // 区切りは SOURCES_RE と同じ
 
   // 声を gain 倍に大きくして dest へつなぐ（iPad などは、マイクを使っている間スピーカーの音が小さくなるため）。
   // 大きくしても割れないよう、0 dBFS を超えた分だけを押さえるリミッターを通す（1 倍のときは元の音のまま）
@@ -102,6 +106,7 @@ window.LocalVoice = (() => {
       this.ducked = false;
       this.playGen = 0;         // 割り込まれた回数（合成を待っている間に割り込まれた文を、あとから話さないように）
       this.mood = "ふつう";     // いま話している返事の気持ち（印が来るまで続く。返事ごとに戻す）
+      this.fillers = fillersOf(o.phrases);   // つなぎの言葉（話し方に合わせて作った言葉か、用意した言葉）
     }
 
     async start() {
@@ -112,7 +117,7 @@ window.LocalVoice = (() => {
       this.active = true;
       this.o.onConnect?.({ conversationId: null });
       if (this.o.initialText) this.userSaid(this.o.initialText, "", { from: "wake" });
-      else this.say(this.o.greeting || GREETING);
+      else this.say(this.o.greeting || (usable(this.o.phrases?.greeting) ? pick(this.o.phrases.greeting) : GREETING));
     }
 
     // 声の合成と、聞き取り（ローカル音声認識 / ブラウザ）が使えるか
@@ -370,7 +375,9 @@ window.LocalVoice = (() => {
       const turn = Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
       this.inflight = { turn, discard: false, muted: false, played: false, noMore: false, fills: [], clock: clock && { ...clock, sentAt: performance.now() } };
       this.clearFill();
-      this.fillTimers = [setTimeout(() => this.fill("wait"), FILL_WAIT_MS), setTimeout(() => this.fill("long"), FILL_LONG_MS)];
+      // 待たせるときのつなぎの言葉は、ユーザーの発言への返事だけ（clock があるとき）。作業の報告・追加機能の結果のような
+      //  知らせへの返事は、もう「できたよ」「見てみるね」と話しているので、「ちょっと待ってね」を重ねない
+      this.fillTimers = clock ? [setTimeout(() => this.fill("wait"), FILL_WAIT_MS), setTimeout(() => this.fill("long"), FILL_LONG_MS)] : [];
       this.buf = ""; this.full = ""; this.mood = "ふつう";
       if (!this.playing) this.setMode("thinking");
       const now = new Date().toLocaleString("ja-JP", { dateStyle: "medium", timeStyle: "short" });
@@ -474,7 +481,7 @@ window.LocalVoice = (() => {
       if (fl.fills.includes(kind) || (kind === "wait" && fl.fills.length)) return;   // 「調べてみますね」のあとに「少々お待ちを」は重ねない
       fl.fills = [...fl.fills, kind];
       if (fl.clock && fl.clock.fillerAt == null) fl.clock = { ...fl.clock, fillerAt: performance.now() - fl.clock.sentAt };
-      const t = pick(FILLERS[kind]);
+      const t = pick(this.fillers[kind]);
       this.recentSpoken.push(t); if (this.recentSpoken.length > 4) this.recentSpoken.shift();   // 自分の声の回り込みと分かるように
       this.queue.push(Object.assign(this.synth(t), { text: t }));
       this.playNext();
@@ -611,7 +618,7 @@ window.LocalVoice = (() => {
         src.onended = () => ctx.close();
       } catch (e) { ctx.close(); throw e; }
     },
-    louder, waitsForMore, cutSources, attrs, spokenText, TAG_RE, MOOD_WORDS, Session,   // テスト用
+    louder, waitsForMore, cutSources, attrs, spokenText, fillersOf, TAG_RE, MOOD_WORDS, Session,   // テスト用
     // 応答の速さ（onTiming）を、会話ログに出す 1 行にする
     timingText(t) {
       const s = (ms) => (Number.isFinite(ms) ? (ms / 1000).toFixed(1) : "-");

@@ -54,7 +54,28 @@
   let orbOk = false;
   let micStream = null, micCtx = null, micAnalyser = null, micBins = null;
   const taskState = new Map();      // id -> status（変化の検出用）
-  const REPORT_GREETINGS = ["お待たせしました。", "すみません、ご報告があります。"];   // 作業が終わって自分から報告するときの始め（成功・失敗）
+  const REPORT_GREETINGS = ["お待たせしました。", "すみません、ご報告があります。"];   // 作業が終わって自分から報告するときの始め（成功・失敗。用意した言葉）
+  // 決まった言葉（あいさつ・つなぎの言葉・報告の始め）。サーバーが「名前・性格」の話し方に合わせて作る（/api/phrases。lib/phrases.js）
+  //  作っている途中（ready: false）なら、少しあとで取り直す。声を先に合成して覚えるのは、受け取ってから（warmupVoice）。
+  //  一度覚えたあとに新しい言葉を受け取ったら、覚え直す（用意した言葉と作った言葉の両方を合成して、声の合成を混ませないように）
+  let phrases = null;
+  let phraseTimer = null, phraseReq = null, phrasesWarmed = false;
+  const PHRASE_RETRY_MS = 15000, PHRASE_RETRY_MAX = 8;
+  function loadPhrases(tries = 0) {
+    clearTimeout(phraseTimer);
+    phraseReq = (async () => {
+      try {
+        const j = await (await fetch("/api/phrases")).json();
+        const changed = JSON.stringify(j.phrases || null) !== JSON.stringify(phrases);
+        phrases = j.phrases || null;
+        if (changed && phrasesWarmed && isLocal()) warmPhrases();
+        if (!j.ready && tries < PHRASE_RETRY_MAX) phraseTimer = setTimeout(() => loadPhrases(tries + 1), PHRASE_RETRY_MS);
+      } catch { /* 取れなければ、用意した言葉を使う */ }
+    })();
+    return phraseReq;
+  }
+  const pickOne = (list) => (Array.isArray(list) && list.length ? list[Math.floor(Math.random() * list.length)] : "");
+  const reportGreeting = (ok) => pickOne(phrases?.[ok ? "reportOk" : "reportNg"]) || REPORT_GREETINGS[ok ? 0 : 1];
   const myTasks = new Set();        // この画面で頼んだ作業の id（完了の報告は、頼んだ画面だけでする）
   const reportQueue = [];           // 会話で伝える作業完了の通知
 
@@ -544,19 +565,20 @@
   function onTaskFinished(t) {
     // 表示と報告は、その作業を頼んだ画面だけでする（PC と iPad の両方で開いていても、二重に話さないように）
     const mine = myTasks.has(t.id);
-    if (mine && t.showPath && t.status === "done") showContent({ title: t.task, src: t.showPath });
+    const shown = mine && t.showPath && t.status === "done";
+    if (shown) showContent({ title: t.task, src: t.showPath });
     const ok = t.status === "done";
     chime(ok ? [660, 990, 1320] : [440, 330]);
     addLog("sys", `#${t.id} ${ok ? "完了" : t.status === "cancelled" ? "中止" : "失敗"}：${t.report || t.error || ""}`);
     if (t.status === "cancelled" || !mine) return;
     reportQueue.push(
       ok
-        ? `［作業完了の通知］作業ID${t.id}「${t.task}」が完了しました（担当: ${t.engineLabel}）。結果: ${t.report || "報告文なし"}。この結果をユーザーに簡潔に伝えてください。`
+        ? `［作業完了の通知］作業ID${t.id}「${t.task}」が完了しました（担当: ${t.engineLabel}）。結果: ${t.report || "報告文なし"}。${shown ? "作ったファイルは、もう画面に出しています（出し直さない。遊んでいる途中で読み込み直さないように）。" : ""}この結果をユーザーに簡潔に伝えてください。`
         : `［作業失敗の通知］作業ID${t.id}「${t.task}」は失敗しました（担当: ${t.engineLabel}）。理由: ${t.error || t.report || "不明"}。ユーザーに伝え、どうするか聞いてください。`
     );
     if (conversation) flushReports();
     // 自分から報告を始めるときは、呼ばれたときの「はい、お呼びでしょうか」ではなく、状況に合ったあいさつにする
-    else if (ui.autoReport.checked) { sys("作業が終わったので報告します。"); startConversation("", null, { greeting: REPORT_GREETINGS[ok ? 0 : 1] }); }
+    else if (ui.autoReport.checked) { sys("作業が終わったので報告します。"); startConversation("", null, { greeting: reportGreeting(ok) }); }
   }
   function flushReports() {
     if (!conversation || connecting || mode === "speaking" || !reportQueue.length) return;
@@ -623,7 +645,7 @@
             onUserText: (t) => voiceAnswer(t),   // 確認が出ている間の「お願い」「やめて」は、画面が受け取る
             onTool: (name) => setState("thinking", name === "web_search" ? "調べています" : "考えています"),
             // 呼びかけた人（会話の主）の声だけを聞く（テレビや家族の声は聞き流す。stt/speaker.py）
-            ownerOnly: ui.ownerOnly.checked, wakeVoice, greeting,
+            ownerOnly: ui.ownerOnly.checked, wakeVoice, greeting, phrases,
             onOwner: (r) => sys(r.owner ? "呼びかけた人の声を覚えました。この会話では、その人の声だけを聞きます。" : "最初に話した人の声を覚えて、その人の声だけを聞きます。"),
             onIgnored: () => { ui.heard.textContent = "（周りの声を聞き流しました）"; },
             onTiming: (t) => reportTiming(t),
@@ -832,15 +854,19 @@
     document.documentElement.style.setProperty("--panel-scale", String(v));
   }
   ui.panelScale.oninput = () => { applyPanelScale(); store.set("panelScale", Number(ui.panelScale.value) || 1); };
-  ui.voiceEngine.onchange = () => { store.set("voiceEngine", ui.voiceEngine.value); applyEngineUI(); };
+  ui.voiceEngine.onchange = () => { store.set("voiceEngine", ui.voiceEngine.value); applyEngineUI(); if (isLocal()) loadPhrases(); };
   // VOICEVOX（特に GPU モード）は最初の合成が遅いので、先に準備させておく
   function warmupVoice() {
     if (!isLocal()) return;
-    // 声の準備と、決まった言葉（あいさつ・つなぎの言葉・報告の始め）の先読み
-    const phrases = [...LocalVoice.phrases, ...REPORT_GREETINGS];
-    fetch("/api/tts/warmup", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ speaker: Number(ui.vvSpeaker.value || 2), speed: Number(ui.vvSpeed.value || 1.15), phrases }) }).catch(() => {});
+    Promise.resolve(phraseReq).then(warmPhrases);   // 決まった言葉を受け取っている途中なら、受け取ってから
     warmBrain();
+  }
+  // 声の準備と、決まった言葉（あいさつ・つなぎの言葉・報告の始め）の先読み
+  function warmPhrases() {
+    phrasesWarmed = true;
+    const list = phrases ? Object.values(phrases).flat() : [...LocalVoice.phrases, ...REPORT_GREETINGS];
+    fetch("/api/tts/warmup", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ speaker: Number(ui.vvSpeaker.value || 2), speed: Number(ui.vvSpeed.value || 1.15), phrases: list }) }).catch(() => {});
   }
   // 頭（Claude Code）を先に起動しておく。止まっていると、呼びかけてすぐの返事が数秒遅れる。
   // サーバーは使われない時間が続くと頭を止めるので、待受中はときどき知らせて、起動したままにしてもらう
@@ -893,8 +919,10 @@
     if (serverCfg.aiName) AI_NAME = serverCfg.aiName;
     AmaneRec.setName(AI_NAME);
     // AI の設定（名前・性格・ルール）。保存したら、会話ログや字幕の名前も変える
-    AmanePersona.init((p) => { AI_NAME = p.aiName || AI_NAME; AmaneRec.setName(AI_NAME); });
+    // 話し方を保存したら、サーバーが決まった言葉を作り直すので、取り直す（決まった言葉を使うのは AivisSpeech / VOICEVOX モードだけ）
+    AmanePersona.init((p) => { AI_NAME = p.aiName || AI_NAME; AmaneRec.setName(AI_NAME); if (isLocal()) loadPhrases(); });
     loadSettings();
+    if (isLocal()) loadPhrases();   // 声のエンジンの設定を読んでから
     sys(`「待受をオン」を押して、「${wakeList()[0] || AI_NAME}」と呼びかけてください。`);
     initRecognition();
     refreshButtons();
