@@ -70,6 +70,35 @@ install_pkg() {
   read -r -p "入れ終わったら Enter を押してください…"
 }
 
+# python.org の公式インストーラーで入れた Python は、証明書を自分で入れる決まり。
+# 入れないと、音声認識のモデルのダウンロード（urllib）が CERTIFICATE_VERIFY_FAILED で失敗する
+python_cafile_ok() {
+  local f
+  f=$("$PY" -c 'import ssl;print(ssl.get_default_verify_paths().openssl_cafile or "")' 2>/dev/null)
+  [ -n "$f" ] && [ -f "$f" ]
+}
+check_python_certs() {
+  [ -n "$PY" ] || return 0
+  if python_cafile_ok; then
+    echo "Python の証明書: 入っています"
+    return 0
+  fi
+  local ver cmd
+  ver=$("$PY" -c 'import sys;print("%d.%d" % sys.version_info[:2])' 2>/dev/null)
+  cmd="/Applications/Python $ver/Install Certificates.command"
+  if [ "$CHECK" = 1 ]; then
+    echo "Python の証明書: 入れる予定です"
+    return 0
+  fi
+  if [ -f "$cmd" ]; then
+    echo "Python の証明書を入れます…"
+    # Finder から開かない（開発元の確認の窓を出さないため）
+    bash "$cmd"
+    if python_cafile_ok; then echo "Python の証明書: 入れました"; return 0; fi
+  fi
+  echo "[注意] Python の証明書を入れられませんでした。Finder の「アプリケーション」→「Python $ver」の「Install Certificates.command」をダブルクリックしてください"
+}
+
 echo "=== AI あまね かんたんセットアップ（Mac） ==="
 [ "$CHECK" = 1 ] && echo "（--check: 調べるだけです。何も入れません）"
 refresh_path
@@ -110,6 +139,8 @@ else
   [ -d /Library/Frameworks/Python.framework/Versions/3.12/bin ] && PATH="/Library/Frameworks/Python.framework/Versions/3.12/bin:$PATH"
   if find_py; then echo "Python: 入れました（$($PY --version 2>&1)）"; else stop_setup "Python" "https://www.python.org/downloads/"; fi
 fi
+
+check_python_certs
 
 # --- Claude Code ---
 if command -v claude >/dev/null 2>&1; then
