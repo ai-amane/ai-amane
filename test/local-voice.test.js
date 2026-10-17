@@ -191,3 +191,88 @@ test("つなぎの言葉: ユーザーの発言への返事だけ待ち時間を
   await s.dispatch("明日の天気は？", { from: "talk", heardAt: 0 });
   assert.deepEqual(timers, [3500, 12000]);
 });
+
+// ---- 本人の声を覚えたか（ownerVerified）。重い確認を声で決めてよいかの印 ----
+// 時間は偽物にして、1.5 秒の待ちより先に失敗が来る場合と、あとに来る場合を作り分ける
+function ownerHarness(startImpl) {
+  const timers = [];
+  const ctx = vm.createContext({
+    window: {}, console,
+    setTimeout: (fn, ms) => { timers.push({ fn, ms }); return timers.length; }, clearTimeout: () => {},
+    MicVAD: { session: { start: startImpl } },
+  });
+  vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "public", "local-voice.js"), "utf8"), ctx);
+  const errors = [];
+  const s = Object.create(ctx.window.LocalVoice.Session.prototype);
+  s.o = { ownerOnly: true, wakeVoice: { wav: "w", start: 0, end: 1 }, onError: (m) => errors.push(m), onOwner: () => {} };
+  s.ownerVerified = false; s.ownerFailed = false;
+  const fire = (ms) => timers.filter((t) => t.ms === ms).forEach((t) => t.fn());
+  // startWhisper の声紋まわりだけを再現した、本物と同じ手順
+  const begin = async () => {
+    const session = await s.startOwner(s.o.wakeVoice);
+    s.session = s.ownerFailed ? "" : session;
+    s.voiceprint = Boolean(s.session);
+  };
+  return { s, errors, fire, begin };
+}
+const tick = () => new Promise((r) => setImmediate(r));
+
+test("本人の声: 呼びかけの声で覚えられた（owner true）ときだけ ownerVerified", async () => {
+  const h = ownerHarness(async () => ({ owner: true }));
+  await h.begin();
+  assert.equal(h.s.ownerVerified, true);
+  assert.equal(h.s.voiceprint, true);
+  assert.ok(h.s.session);
+});
+
+test("本人の声: 最初に話した人をあとで主にする形（owner false）は ownerVerified にしない（声紋は使う）", async () => {
+  const h = ownerHarness(async () => ({ owner: false }));
+  await h.begin();
+  assert.equal(h.s.ownerVerified, false);
+  assert.equal(h.s.voiceprint, true);
+});
+
+test("本人の声: 失敗が 1.5 秒の待ちより先に来たら、声紋なし・ownerVerified なし", async () => {
+  const h = ownerHarness(async () => { throw new Error("down"); });
+  await h.begin();
+  assert.equal(h.s.voiceprint, false);
+  assert.equal(h.s.session, "");
+  assert.equal(h.s.ownerVerified, false);
+  assert.equal(h.errors.length, 1);
+});
+
+test("本人の声: 失敗が待ちのあとに来ても、声紋なし・ownerVerified なし", async () => {
+  let fail;
+  const h = ownerHarness(() => new Promise((_, rej) => { fail = rej; }));
+  const p = h.begin();
+  await tick();
+  h.fire(1500);   // 待ちが先に終わる
+  await p;
+  assert.equal(h.s.voiceprint, true);   // この時点ではまだ分からない
+  fail(new Error("late"));
+  await tick();
+  assert.equal(h.s.voiceprint, false);
+  assert.equal(h.s.session, "");
+  assert.equal(h.s.ownerVerified, false);
+  assert.equal(h.errors.length, 1);
+});
+
+test("本人の声: 待ちのあとに成功が来ても ownerVerified になる。会話を始め直すと false に戻る", async () => {
+  let ok;
+  const h = ownerHarness(() => new Promise((res) => { ok = res; }));
+  const p = h.begin();
+  await tick();
+  h.fire(1500);
+  await p;
+  assert.equal(h.s.ownerVerified, false);
+  ok({ owner: true });
+  await tick();
+  assert.equal(h.s.ownerVerified, true);
+  // 始め直し（次の startOwner）で戻る
+  h.s.o.wakeVoice = { wav: "w2" };
+  h.s.ownerVerified = true;
+  const again = h.s.startOwner(h.s.o.wakeVoice);
+  assert.equal(h.s.ownerVerified, false);
+  h.fire(1500);
+  await again;
+});

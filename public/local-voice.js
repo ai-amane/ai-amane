@@ -90,6 +90,8 @@ window.LocalVoice = (() => {
     constructor(o) {
       this.o = o;
       this.active = false;
+      this.ownerVerified = false;   // 呼びかけの声で本人を覚えられた会話か（重い確認を声で決めてよいのは、このときだけ）
+      this.ownerFailed = false;     // 本人の声を覚えるのに失敗した
       this.mode = "listening";
       this.queue = [];          // Promise<AudioBuffer|null> の列（先読みしつつ順番に再生）
       this.playing = false;
@@ -169,7 +171,9 @@ window.LocalVoice = (() => {
     //  音声認識サーバーが聞き流す（stt/speaker.py）。テレビなどが鳴り続けて話の区切りが来なくても待たされないよう、
     //  VOICEPRINT_MAX_MS ごとに区切って調べる
     async startWhisper() {
-      this.session = this.o.ownerOnly ? await this.startOwner(this.o.wakeVoice) : "";
+      const session = this.o.ownerOnly ? await this.startOwner(this.o.wakeVoice) : "";
+      // 覚えるのに失敗していたら（待っている間でも、ここへ戻る直前でも）声紋なし
+      this.session = this.ownerFailed ? "" : session;
       this.voiceprint = Boolean(this.session);
       this.vad = await new MicVAD.Listener({
         sensitivity: this.o.sensitivity,
@@ -248,14 +252,24 @@ window.LocalVoice = (() => {
     // その中の呼びかけの区間（秒））。無ければ、会話で最初に話した人を主にする。会話の印（session）を返す
     async startOwner(wakeVoice) {
       const session = Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+      this.ownerVerified = false;
+      this.ownerFailed = false;
       const started = MicVAD.session.start(wakeVoice?.wav || "", session, wakeVoice?.start ?? 0, wakeVoice?.end ?? "")
-        .then((r) => this.o.onOwner?.(r))
-        .catch((e) => this.o.onError?.("呼びかけた人の声を覚えられません（声紋なしで聞きます）: " + e.message));
+        .then((r) => {
+          // 本人と決めてよいのは、呼びかけの声で覚えられた（owner が true）ときだけ。最初に話した人をあとで主にする形は含めない
+          this.ownerVerified = r?.owner === true && !this.ownerFailed;
+          try { this.o.onOwner?.(r); } catch (e) { console.error(e); }
+        })
+        .catch((e) => {
+          // 表示のとおり声紋なしにする（待っている間に来ても、そのあとに来ても）
+          this.ownerFailed = true; this.ownerVerified = false; this.voiceprint = false; this.session = "";
+          this.o.onError?.("呼びかけた人の声を覚えられません（声紋なしで聞きます）: " + e.message);
+        });
       const wait = (ms) => Promise.race([started, new Promise((r) => setTimeout(r, ms))]);
       // 最初の聞き取りは、覚え終わってから（声紋のモデルの準備などで遅れても、5 秒までで先に進む）
       this.ownerReady = wait(5000);
       await wait(1500);   // 会話を始めるのは待ちすぎない（覚えるのはふだん 0.1 秒ほど）
-      return session;
+      return this.ownerFailed ? "" : session;
     }
 
     // ---- 聞き取り ----

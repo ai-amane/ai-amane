@@ -453,15 +453,15 @@
     }, { decide: run });
   }
   // 確認が出ている間の声の答え（画面が直接受け取り、頭には送らない）→ 受け取ったら true
-  //  voice: owner の確認（鍵を開けるなど）は、「呼びかけた人の声だけを聞く」がオンのとき（声紋で本人と分かるとき）だけ声で決められる
+  //  voice: owner の確認（鍵を開けるなど）は、呼びかけの声で本人を覚えられた会話（ownerVerified）でだけ声で決められる
   function voiceAnswer(text) {
     const c = AmanePlugins.activeConfirm();
     const a = c ? AmanePlugins.voiceAnswerOf(text) : "";
     if (!a) return false;
-    // 設定ではなく、いまの会話で声紋が本当に効いているか（会話の途中で設定をオンにしても、その会話には効かない）
-    const owner = isLocal() && conversation?.voiceprint === true;
+    // 設定ではなく、いまの会話で本人の声を覚えられたか（覚えるのに失敗した会話や、最初に話した人を主にする会話は、本人と決められない）
+    const owner = isLocal() && conversation?.ownerVerified === true;
     if (c.voice === "none" || (c.voice === "owner" && !owner)) {
-      addLog("sys", c.voice === "owner" ? "この確認は、声紋（呼びかけた人の声だけを聞く）がオンのときだけ声で決められます。画面のボタンで決めてください" : "この確認は、画面のボタンで決めてください");
+      addLog("sys", c.voice === "owner" ? "この確認は、呼びかけた人の声を覚えられた会話でだけ、声で決められます。画面のボタンで決めてください" : "この確認は、画面のボタンで決めてください");
       return true;
     }
     if (!c.say(a === "yes")) { addLog("sys", "確認が出たばかりなので、声の答えは受け付けませんでした。もう一度言ってください"); return true; }
