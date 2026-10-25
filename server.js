@@ -21,6 +21,8 @@ const { createCompanions } = require("./lib/companions");
 const { createVoiceRoutes } = require("./lib/voice-routes");
 const { createDisplayRoutes } = require("./lib/display-routes");
 const { createPlugins } = require("./lib/plugins");
+const { createEventHub } = require("./lib/plugin-events");
+const { createClaudeHooks } = require("./lib/claude-hooks");
 const { createPersona } = require("./lib/persona");
 const { createPhrases, runClaude } = require("./lib/phrases");
 
@@ -87,7 +89,9 @@ async function elevenlabs(pathname) {
 getTokenizer();   // 呼びかけの判定に使う辞書を先に読み込む
 const CONFIRM_BLOCK_AFTER_TASK_MS = 2 * 60 * 1000;
 // 追加機能（plugins/<名前>/plugin.js）。.env の PLUGINS_OFF（カンマ区切り）で止められる
+const hub = createEventHub();   // 画面への知らせ（追加機能の知らせと、Claude Code からの知らせが共有する）
 const plugins = createPlugins({
+  hub,
   dir: path.join(__dirname, "plugins"), dataDir: path.join(__dirname, "data", "plugins"), env, appendLog,
   off: env("PLUGINS_OFF").split(/[,\s]+/).filter(Boolean),
   // 追加機能の使い方が変わった（機器の一覧を読み込んだ、など）→ 頭を起動し直して新しい説明を渡す（会話の切れ目で）
@@ -110,6 +114,11 @@ const brain = createBrain({
   promptSrc: path.join(__dirname, "prompts", "local-brain-system-prompt.md"), promptFile: path.join(LOG_DIR, "brain-system-prompt.md"),
   // 声の気持ち（[うれしい] などの印）の説明は、AivisSpeech のときだけ付ける（VOICEVOX では使わない。lib/moods.js）
   vars: () => persona.vars(), promptExtra: () => [IS_AIVIS && moodPrompt(), persona.prompt(), plugins.prompt()].filter(Boolean).join("\n\n"),
+});
+// ターミナルの Claude Code（hooks）からの知らせ。.env の CLAUDE_HOOKS=1 のときだけ受ける（lib/claude-hooks.js）
+const claudeHooks = createClaudeHooks({
+  enabled: env("CLAUDE_HOOKS", "0") === "1", tokenFile: path.join(__dirname, "data", "claude-hooks-token"),
+  say: (text) => hub.emitTo("", { type: "say", plugin: "claude-hooks", text, chime: "notice" }),
 });
 const tts = createTts({ url: VOICEVOX_URL, name: TTS_NAME, isAivis: IS_AIVIS });
 // 決まった言葉（あいさつ・つなぎの言葉・作業の報告の始め）。話し方に合わせて一度だけ作り、data/phrases.json に覚えておく
@@ -256,7 +265,7 @@ async function handle(req, res, from) {
     if (from !== "local" && LOCAL_ONLY.test(p)) return sendJson(res, 403, { error: "この操作は PC の画面からだけできます" });
     if (crossSiteApi(req, p)) return sendJson(res, 403, { error: "ほかのサイトからは使えません" });
     req.amaneFrom = from;   // 追加機能の「PC の画面からだけ」の動作の判定に使う（lib/plugins.js）
-    for (const route of [otherRoutes, voiceRoutes, displayRoutes, plugins.routes, persona.routes, phrases.routes]) if (await route(req, res, url)) return;
+    for (const route of [otherRoutes, voiceRoutes, displayRoutes, claudeHooks.routes, plugins.routes, persona.routes, phrases.routes]) if (await route(req, res, url)) return;
     if (await patternRoutes(req, res, p)) return;
   } catch (e) {
     console.error(`[api] ${p} failed:`, e.message);

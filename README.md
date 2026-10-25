@@ -2,7 +2,7 @@
 
 <img src="docs/images/icon.png" alt="AI あまね のアイコン" width="112" align="right">
 
-**呼びかけると声で応え、話しながら PC の作業もこなす、自分の PC で動く音声 AI エージェント** — v0.6.4
+**呼びかけると声で応え、話しながら PC の作業もこなす、自分の PC で動く音声 AI エージェント** — v0.6.5
 
 ![AI あまね の画面。頼んだ BGM を YouTube で流しながら、カップ麺のタイマーの残り時間を画面の上に出しているところ（曲: Cartoon - On & On (feat. Daniel Levi) [NCS Release]）](docs/images/screenshot.jpg)
 
@@ -277,6 +277,10 @@ git clone https://github.com/ai-amane/ai-amane.git
 ### 4-3. リビングの iPad などから使う（任意）
 
 `.env` に `LAN_ACCESS=1` と書くと、家の Wi-Fi の中の iPad やスマホをマイクとスピーカーにして、PC の前にいなくても話しかけられます。最初に一度だけ、証明書のインストールと、PC の画面に出る番号でのペアリングが必要です。手順は [docs/advanced.md](docs/advanced.md#ipadスマホから使うリビングに置く) を見てください。
+
+### 4-4. ターミナルの Claude Code の終わりを声で知らせる（任意）
+
+自分でターミナルを開いて使っている Claude Code が作業を終えたとき、確認待ちで止まったときに、あまね が声で知らせます。`.env` に `CLAUDE_HOOKS=1` と書いて起動し直し、`npm run claude-hooks` で出る設定を Claude Code の設定に貼り付けます（初期値はオフです。入れ方・外し方・安全の作りは [docs/advanced.md](docs/advanced.md) の「ターミナルの Claude Code の終わりを声で知らせる」）。
 
 ## 5. 作業を頼む（任意）
 

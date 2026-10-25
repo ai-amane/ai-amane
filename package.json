@@ -1,13 +1,14 @@
 {
   "name": "ai-amane",
-  "version": "0.6.4",
+  "version": "0.6.5",
   "private": true,
   "description": "呼びかけると声で応え、PC上の作業もこなす音声AIエージェント（ElevenLabs / VOICEVOX + Claude Code / Codex）",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "test": "node --test test/*.test.js",
-    "test:stt": "python -m unittest discover -s test -p \"test_*.py\""
+    "test:stt": "python -m unittest discover -s test -p \"test_*.py\"",
+    "claude-hooks": "node scripts/claude-hooks-print.js"
   },
   "dependencies": {
     "@mozilla/readability": "^0.6.0",
