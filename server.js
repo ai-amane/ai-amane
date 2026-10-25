@@ -25,6 +25,7 @@ const { createEventHub } = require("./lib/plugin-events");
 const { createClaudeHooks } = require("./lib/claude-hooks");
 const { createPersona } = require("./lib/persona");
 const { createPhrases, runClaude } = require("./lib/phrases");
+const { startupLines } = require("./lib/startup");
 
 // ---------- .env ----------
 const envPath = path.join(__dirname, ".env");
@@ -318,17 +319,12 @@ server.on("error", async (e) => {
 });
 
 server.listen(PORT, "127.0.0.1", () => {
-  console.log("");
-  console.log(`  AI AMANE is running: http://localhost:${PORT}`);
-  console.log(`  Agent ID (.env):    ${AGENT_ID || "(not set - enter it in the UI)"}`);
-  console.log(`  Private agent mode: ${API_KEY ? "ON (signed URL)" : "OFF (public agent)"}`);
-  console.log(`  Task workdir:       ${WORKDIR}`);
-  console.log(`  Engines:            light=${LIGHT_ENGINE}  heavy=${HEAVY_ENGINE}  router=${ROUTER}`);
-  console.log("  Close this window to stop.");
-  console.log("");
+  for (const line of startupLines({ port: PORT, aiName: persona.get().aiName, workdir: WORKDIR, light: LIGHT_ENGINE, heavy: HEAVY_ENGINE, router: ROUTER, agentId: AGENT_ID, signedUrl: Boolean(API_KEY) })) console.log(line);
   plugins.start();
   // 前のサーバーと入れ替わった直後は、前の音声認識サーバー・LAN のポートが空くのを少し待つ
   setTimeout(() => { companions.startStt(); companions.startTts(); if (LAN_ACCESS) startLan(); }, listenRetries ? 2500 : 0);
+  // 声のソフトにつながらなければ、何をすればいいかを出す（自動で起動する場合に間に合うよう、少し待ってから 1 回だけ）
+  setTimeout(() => { companions.checkTts().catch(() => {}); }, 20000);
   if (env("OPEN_BROWSER", "1") !== "0") {
     if (IS_WIN) exec(`start "" http://localhost:${PORT}`);
     // Mac は動作確認している Chrome で開く。無ければ既定のブラウザ

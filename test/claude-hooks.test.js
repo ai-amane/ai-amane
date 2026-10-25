@@ -6,8 +6,8 @@ const os = require("os");
 const path = require("path");
 const http = require("http");
 const { Readable } = require("stream");
-const { createClaudeHooks, cleanName, folderName, isLoopback, hooksSnippet, HOOK_PATH, TOKEN_HEADER } = require("../lib/claude-hooks");
-const { portOf, send } = require("../scripts/claude-hook");
+const { createClaudeHooks, cleanName, folderName, isLoopback, isAmaneTask, hooksSnippet, HOOK_PATH, TOKEN_HEADER } = require("../lib/claude-hooks");
+const { portOf, send, main } = require("../scripts/claude-hook");
 
 const tmpDirs = [];
 const tmpFile = () => { const d = fs.mkdtempSync(path.join(os.tmpdir(), "amane-hooks-")); tmpDirs.push(d); return path.join(d, "data", "claude-hooks-token"); };
@@ -152,4 +152,32 @@ test("つないで確かめる: スクリプトの送り方（ヘッダー・本
     assert.deepEqual(said, ["実物の Claude Code、終わったよ。"]);
   } finally { await new Promise((r) => server.close(r)); }
   assert.equal(await send({ port, token, kind: "done", name: "x" }), 0);   // 止まっている → 0（例外にしない）
+});
+
+test("作業担当の印: あまね に頼んだ作業（AMANE_TASK=1）の Claude Code からは送らない。印が無ければ送る", async () => {
+  assert.equal(isAmaneTask({ AMANE_TASK: "1" }), true);
+  assert.equal(isAmaneTask({}), false);
+  assert.equal(isAmaneTask({ AMANE_TASK: "0" }), false);
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "amane-hook-"));
+  tmpDirs.push(root);
+  fs.mkdirSync(path.join(root, "data"));
+  fs.writeFileSync(path.join(root, "data", "claude-hooks-token"), "a".repeat(64));
+  const got = [];
+  const server = http.createServer((req, res) => {
+    let b = ""; req.on("data", (c) => { b += c; }); req.on("end", () => { got.push(JSON.parse(b)); res.writeHead(200); res.end("{}"); });
+  });
+  await new Promise((r) => server.listen(0, "127.0.0.1", r));
+  const port = String(server.address().port);
+  const input = async () => JSON.stringify({ cwd: "/home/me/my-app" });
+  try {
+    await main(["done"], { env: { AMANE_PORT: port, AMANE_TASK: "1" }, root, input });
+    assert.equal(got.length, 0);
+    await main(["done"], { env: { AMANE_PORT: port }, root, input });
+    assert.deepEqual(got, [{ kind: "done", name: "my-app" }]);
+  } finally { await new Promise((r) => server.close(r)); }
+});
+
+test("作業担当は AMANE_TASK=1 を付けて起動する（lib/tasks.js）", () => {
+  const src = fs.readFileSync(path.join(__dirname, "..", "lib", "tasks.js"), "utf8");
+  assert.match(src, /env: childEnv\(\{ AMANE_TASK: "1" \}\)/);
 });

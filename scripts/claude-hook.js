@@ -4,7 +4,7 @@
 const fs = require("fs");
 const http = require("http");
 const path = require("path");
-const { folderName, HOOK_PATH, TOKEN_HEADER, KINDS } = require("../lib/claude-hooks");
+const { folderName, isAmaneTask, HOOK_PATH, TOKEN_HEADER, KINDS } = require("../lib/claude-hooks");
 
 const ROOT = path.join(__dirname, "..");
 const TIMEOUT_MS = 3000;
@@ -45,14 +45,16 @@ function send({ port, token, kind, name }) {
   });
 }
 
-async function main(argv = process.argv.slice(2)) {
+// env・root・input はテスト用（root: あまね のフォルダ。input: hooks の入力の文字列を読む関数）
+async function main(argv = process.argv.slice(2), { env = process.env, root = ROOT, input = readStdin } = {}) {
   const kind = argv[0];
   if (!Object.hasOwn(KINDS, kind)) return;
+  if (isAmaneTask(env)) return;   // あまね に頼んだ作業（作業担当）の Claude Code。あまね が自分で報告するので送らない
   let token = "";
-  try { token = fs.readFileSync(path.join(ROOT, "data", "claude-hooks-token"), "utf8").trim(); } catch { return; }   // あまね が一度も オンで起動していない
+  try { token = fs.readFileSync(path.join(root, "data", "claude-hooks-token"), "utf8").trim(); } catch { return; }   // あまね が一度も オンで起動していない
   let cwd = "";
-  try { cwd = JSON.parse(await readStdin()).cwd || ""; } catch { /* 入力が読めなくても知らせる */ }
-  await send({ port: portOf(), token, kind, name: folderName(cwd || process.cwd()) });
+  try { cwd = JSON.parse(await input()).cwd || ""; } catch { /* 入力が読めなくても知らせる */ }
+  await send({ port: portOf(env, root), token, kind, name: folderName(cwd || process.cwd()) });
 }
 
 if (require.main === module) main().then(() => process.exit(0), () => process.exit(0));

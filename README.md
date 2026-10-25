@@ -2,7 +2,7 @@
 
 <img src="docs/images/icon.png" alt="AI あまね のアイコン" width="112" align="right">
 
-**呼びかけると声で応え、話しながら PC の作業もこなす、自分の PC で動く音声 AI エージェント** — v0.6.5
+**呼びかけると声で応え、話しながら PC の作業もこなす、自分の PC で動く音声 AI エージェント** — v0.6.6
 
 ![AI あまね の画面。頼んだ BGM を YouTube で流しながら、カップ麺のタイマーの残り時間を画面の上に出しているところ（曲: Cartoon - On & On (feat. Daniel Levi) [NCS Release]）](docs/images/screenshot.jpg)
 
@@ -225,9 +225,16 @@ git clone https://github.com/ai-amane/ai-amane.git
 
 ```
   AI AMANE is running: http://localhost:3939
+
+  ── 次にやること ──
+  1. ブラウザで http://localhost:3939 を開く（自動で開かないときは、このアドレスをブラウザに入れてください）
+  2. 画面を一度クリック →「待受をオン」→ マイクを「許可」
+  3. 「あまね」と呼ぶ
   ...
 [stt] ready on http://127.0.0.1:3941  engine=reazonspeech ...
 ```
+
+ブラウザが自動で開かないときは、Chrome などで http://localhost:3939 を開いてください。声のソフト（AivisSpeech）が動いていないと、起動して少したってから「声のソフト（AivisSpeech）につながりません」と出ます。AivisSpeech のアプリを開けば、そのまま声が出ます。
 
 > [!NOTE]
 > 「Windows によって PC が保護されました」と表示された場合は、「詳細情報」→「実行」を押してください。インターネットからダウンロードしたファイルを初めて開くときに表示されます。
