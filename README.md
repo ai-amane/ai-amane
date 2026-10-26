@@ -2,7 +2,7 @@
 
 <img src="docs/images/icon.png" alt="AI あまね のアイコン" width="112" align="right">
 
-**呼びかけると声で応え、話しながら PC の作業もこなす、自分の PC で動く音声 AI エージェント** — v0.6.6
+**呼びかけると声で応え、話しながら PC の作業もこなす、自分の PC で動く音声 AI エージェント** — v0.6.7
 
 ![AI あまね の画面。頼んだ BGM を YouTube で流しながら、カップ麺のタイマーの残り時間を画面の上に出しているところ（曲: Cartoon - On & On (feat. Daniel Levi) [NCS Release]）](docs/images/screenshot.jpg)
 
@@ -95,9 +95,9 @@ Windows は `setup.bat`、Mac は `setup.command` が、足りないソフトを
 
 **Windows**
 
-1. このページの上にある緑色の **「Code」** ボタン →「**Download ZIP**」を押します。
-2. ダウンロードした ZIP を右クリック →「**すべて展開**」を押し、分かりやすい場所に展開します（おすすめは `C:\ai-amane`。**OneDrive の中や、深いフォルダは避けてください**）。
-3. 展開したフォルダの中の **`setup.bat`** をダブルクリックします。「Windows によって PC が保護されました」と出たら「詳細情報」→「実行」を押します。
+1. [リリースのページ](https://github.com/ai-amane/ai-amane/releases/latest)を開き、下の「Assets」にある **`ai-amane.zip`** を押してダウンロードします（直接のリンクは `https://github.com/ai-amane/ai-amane/releases/latest/download/ai-amane.zip` です）。
+2. ダウンロードした ZIP を右クリック →「**すべて展開**」を押し、分かりやすい場所に展開します（おすすめは `C:\` の直下で、`C:\ai-amane` になります。**OneDrive の中や、深いフォルダは避けてください**）。`ai-amane` というフォルダができます。
+3. `ai-amane` フォルダの中の **`setup.bat`** をダブルクリックします。「Windows によって PC が保護されました」と出たら「詳細情報」→「実行」を押します。
 4. 黒いウィンドウの表示に従って進めます。
    - **Node.js・Python・Claude Code** が入っていなければ、自動で入れます。「このアプリがデバイスに変更を加えることを許可しますか？」と聞かれたら「はい」を押します。
    - **Claude のログイン**: ブラウザが開くので、Claude のアカウントでログインします（**Claude の有料プラン（Pro 以上）** が必要です）。
@@ -110,7 +110,7 @@ Windows は `setup.bat`、Mac は `setup.command` が、足りないソフトを
 
 **Mac**（作ったばかりの版です。うまくいかないときは、下の「Mac で手で入れる場合」で進めてください）
 
-1. このページの上にある緑色の **「Code」** ボタン →「**Download ZIP**」を押します。ダウンロードした ZIP をダブルクリックして展開し、できたフォルダを分かりやすい場所（例: ホームのフォルダの中）に移します（iCloud Drive の中は避けてください）。
+1. [リリースのページ](https://github.com/ai-amane/ai-amane/releases/latest)から **`ai-amane.zip`** をダウンロードします。ZIP をダブルクリックして展開し、できた `ai-amane` フォルダを分かりやすい場所（例: ホームのフォルダの中）に移します（iCloud Drive の中は避けてください）。
 2. フォルダの中の **`setup.command`** を、**右クリック →「開く」→「開く」** で開きます（ダブルクリックでは「開発元を検証できません」と出て開けません）。それでも開けないときは、「システム設定」→「プライバシーとセキュリティ」の下のほうにある「**このまま開く**」を押します。
 3. ターミナル（文字の窓）の表示に従って進めます。
    - **Node.js・Python** が入っていなければ、公式のインストーラーが開きます。画面に従って入れ（Mac のパスワードを聞かれます）、終わったらターミナルで <kbd>Enter</kbd> を押します（Homebrew が入っていれば、Homebrew で入れます）。
@@ -191,10 +191,10 @@ Claude Code は Anthropic 社のツールで、**Claude の有料プラン（Pro
 
 ### 3-6. AI あまね をダウンロードする
 
-1. このページの上にある緑色の **「Code」** ボタン →「**Download ZIP**」を押します。
-2. ダウンロードした ZIP を右クリック →「**すべて展開**」を押し、分かりやすい場所に展開します。
-   - おすすめの場所: `C:\ai-amane`（**OneDrive の中や、深いフォルダは避けてください**）
-3. 展開したフォルダの中に `start.bat` や `README.md` があることを確認します。
+1. [リリースのページ](https://github.com/ai-amane/ai-amane/releases/latest)を開き、下の「Assets」にある **`ai-amane.zip`** を押してダウンロードします（直接のリンクは `https://github.com/ai-amane/ai-amane/releases/latest/download/ai-amane.zip` です）。
+2. ダウンロードした ZIP を右クリック →「**すべて展開**」を押し、分かりやすい場所に展開します。`ai-amane` というフォルダができます。
+   - おすすめの場所: `C:\`（`C:\ai-amane` になります。**OneDrive の中や、深いフォルダは避けてください**）
+3. `ai-amane` フォルダの中に `start.bat` や `README.md` があることを確認します。
 
 Git を使える方は、次のコマンドでも取得できます。
 
@@ -354,7 +354,7 @@ Codex を入れたら、`.env` の `LIGHT_ENGINE=claude-sonnet` を `LIGHT_ENGIN
 
 ## 8. アップデート・アンインストール
 
-**アップデート**: 新しい版を ZIP でダウンロードし、`.env` をコピーして新しいフォルダに入れてください（Git の場合は `git pull`）。
+**アップデート**: [リリースのページ](https://github.com/ai-amane/ai-amane/releases/latest)から新しい `ai-amane.zip` をダウンロードして展開し、いまの `.env` を新しい `ai-amane` フォルダにコピーしてください（Git の場合は `git pull`）。
 
 **アンインストール**: AI あまね のフォルダを削除すれば完了です。音声認識のモデルもフォルダの中（`models`）にあります。Node.js・Python・AivisSpeech・Claude Code は、Windows の「アプリ」から個別にアンインストールできます。
 

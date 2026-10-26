@@ -81,7 +81,7 @@
 
   // ---------- helpers ----------
   const HAS_KANJI = /[\u4e00-\u9fff]/;
-  const wakeList = () => (ui.wakeWords.value || "").split(/[,、，]/).map((w) => w.trim()).filter(Boolean);
+  const wakeList = () => AmaneWakeWords.splitList(ui.wakeWords.value);
   // 呼びかけの判定（server.js の /api/wake。発話の先頭の呼びかけだけを拾い、漢字は読み仮名に直して比べる）
   // → { hit, reading, rest（呼びかけに続けて言った用件） }。ブラウザの音声認識は途中結果ごとに呼ぶのでキャッシュする
   const wakeCache = new Map();
@@ -784,11 +784,10 @@
   ui.btnSaveWake.onclick = () => { store.set("wakeWords", wakeList()); note("呼びかけの言葉を保存しました。"); };
   ui.btnAddHeard.onclick = () => {
     if (!lastHeard) return;
-    const list = wakeList();
-    if (!list.includes(lastHeard)) list.push(lastHeard);
+    const list = AmaneWakeWords.addHeard(wakeList(), lastHeard);   // 「ねえ、あまね」の「、」は取り除いて 1 つの言葉にする
     ui.wakeWords.value = list.join(", ");
     store.set("wakeWords", list);
-    note(`「${lastHeard}」を呼びかけの言葉に追加しました。`);
+    note(`「${AmaneWakeWords.cleanHeard(lastHeard)}」を呼びかけの言葉に追加しました。`);
   };
   ui.idleEnd.onchange = () => store.set("idleEnd", ui.idleEnd.checked);
   ui.idleSec.onchange = () => store.set("idleSec", Number(ui.idleSec.value) || 60);

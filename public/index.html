@@ -171,7 +171,7 @@
                 <input id="wakeWords" autocomplete="off">
                 <button id="btnSaveWake" class="btn small">保存</button>
               </div>
-              <p class="hint">カンマ区切りで、いくつでも。呼んでも反応しないときは、呼んだあとに下のボタンを押すと、聞こえた言葉を足せます。</p>
+              <p class="hint">カンマ区切りで、いくつでも。「ねえあまね」のように、1 つの言葉の中には「、」や空白を入れないでください。呼んでも反応しないときは、呼んだあとに下のボタンを押すと、聞こえた言葉を足せます。</p>
               <button id="btnAddHeard" class="btn small ghost" disabled>いま聞こえた言葉を追加</button>
             </div>
             <label class="setting check" data-keywords="無言 終了 タイムアウト 秒">
@@ -293,6 +293,7 @@
   <script src="screen-awake.js"></script>
   <script src="ambient.js"></script>
   <script src="rec-mode.js"></script>
+  <script src="wake-words.js"></script>
   <script src="mic-vad.js"></script>
   <script src="local-voice.js"></script>
   <script src="viewer.js"></script>

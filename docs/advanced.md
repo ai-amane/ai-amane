@@ -107,9 +107,9 @@ iPad など（LAN_ACCESS=1 のとき）
 
 ## 作業の委任
 
-- 依頼は、作業の重さによって `LIGHT_ENGINE`（初期値: Codex の Fast モード）と `HEAVY_ENGINE`（初期値: Claude Code の Opus）に振り分けます。
+- 依頼は、作業の重さによって `LIGHT_ENGINE`（初期値: Claude Code の Sonnet。Codex を入れたら `codex-fast` にすると速くなります）と `HEAVY_ENGINE`（初期値: Claude Code の Opus）に振り分けます。
 - 振り分けは「Laya（起動していれば）→ AI の判断 → キーワードのルール」の順で決めます。Laya を使う場合は `python -m pip install laya` のあと `start-laya.bat` を起動します。
-- 権限の初期値は、Codex が `workspace-write`（作業フォルダの中だけ書き込み可）、Claude Code が `acceptEdits`（ファイル編集のみ自動で許可）です。`.env` の `CODEX_SANDBOX` / `CLAUDE_PERMISSION_MODE` で変えられますが、[SECURITY.md](../SECURITY.md) の注意を読んでから変更してください。
+- 権限の初期値は、Codex が `workspace-write`（作業フォルダの中だけ書き込み可）、Claude Code が `acceptEdits` です。`acceptEdits` では、作業フォルダの中でのファイルの作成・編集と、フォルダを作る・ファイルを写す・移す・消すといった簡単なファイル操作（`mkdir`・`touch`・`cp`・`mv`・`rm`・`rmdir`・`sed`）を、確認なしでしてよいことにします。テストやプログラムの実行、ソフトのインストールなど、それ以外のコマンドは通りません（作業担当は確認の画面を出せないため、断られます）。作業フォルダの中のファイルは消されることもあるので、大事なファイルは置かないでください。`.env` の `CODEX_SANDBOX` / `CLAUDE_PERMISSION_MODE` で変えられますが、[SECURITY.md](../SECURITY.md) の注意を読んでから変更してください。
 - 同時に実行できる作業は 2 件、1 件あたり最大 15 分です（`MAX_PARALLEL_TASKS` / `TASK_TIMEOUT_SEC`）。
 - 作業のログは `logs/tasks.jsonl` に保存されます。
 
